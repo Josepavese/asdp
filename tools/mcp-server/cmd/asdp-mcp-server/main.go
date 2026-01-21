@@ -30,12 +30,10 @@ func main() {
 
 	// Mode 1: Query CLI (Testing)
 	if *queryPath != "" {
-		// ... existing CLI logic ...
 		resp, err := queryUC.Execute(*queryPath)
 		if err != nil {
 			log.Fatalf("Error querying context: %v", err)
 		}
-		// CLI only supports query for now
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
 		encoder.Encode(resp)
