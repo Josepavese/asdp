@@ -24,7 +24,8 @@ func main() {
 
 	queryUC := usecase.NewQueryContextUseCase(fs, hasher)
 	syncUC := usecase.NewSyncModelUseCase(fs, parser, hasher)
-	scaffoldUC := usecase.NewScaffoldUseCase(fs) // New
+	scaffoldUC := usecase.NewScaffoldUseCase(fs)
+	initAgentUC := usecase.NewInitAgentUseCase(fs)
 
 	// Mode 1: Query CLI (Testing)
 	if *queryPath != "" {
@@ -42,6 +43,6 @@ func main() {
 
 	// Mode 2: MCP Server (Default)
 	fmt.Fprintf(os.Stderr, "ASDP MCP Server v0.1.0 started.\n")
-	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC) // Updated
+	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC)
 	mcpServer.Serve()
 }

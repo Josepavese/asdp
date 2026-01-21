@@ -12,7 +12,7 @@ ASDP is a protocol designed to bridge the gap between AI Agents and Codebases. I
 - **`tools/`**: The reference implementation ("The Kit").
   - **`engine/`**: The shared Go library implementing the ASDP logic.
   - **`mcp-server/`**: The MCP server that exposes ASDP capabilities.
-- **`installer/`**: Cross-platform installation scripts.
+- **`installer/`**: Cross-platform installation scripts. These scripts now include an **interactive initialization** feature that optionally sets up the `.agent/` folder in your current directory.
 
 ### Method 1: Automatic (Native Tools)
 

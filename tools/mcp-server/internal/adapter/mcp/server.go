@@ -11,16 +11,18 @@ import (
 )
 
 type Server struct {
-	queryUC    *usecase.QueryContextUseCase
-	syncUC     *usecase.SyncModelUseCase
-	scaffoldUC *usecase.ScaffoldUseCase
+	queryUC     *usecase.QueryContextUseCase
+	syncUC      *usecase.SyncModelUseCase
+	scaffoldUC  *usecase.ScaffoldUseCase
+	initAgentUC *usecase.InitAgentUseCase
 }
 
-func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase) *Server {
+func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase) *Server {
 	return &Server{
-		queryUC:    queryUC,
-		syncUC:     syncUC,
-		scaffoldUC: scaffoldUC,
+		queryUC:     queryUC,
+		syncUC:      syncUC,
+		scaffoldUC:  scaffoldUC,
+		initAgentUC: initAgentUC,
 	}
 }
 
@@ -141,6 +143,41 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 					"required": []string{"path"},
 				},
 			},
+			{
+				Name:        "asdp_scaffold",
+				Description: "Create a new ASDP-compliant module with codespec.md and codemodel.md.",
+				InputSchema: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"name": map[string]interface{}{
+							"type":        "string",
+							"description": "The name of the module/directory.",
+						},
+						"type": map[string]interface{}{
+							"type":        "string",
+							"description": "Module type (library, service, app). Default: library",
+						},
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "Parent directory for the new module. Default: .",
+						},
+					},
+					"required": []string{"name"},
+				},
+			},
+			{
+				Name:        "asdp_init_agent",
+				Description: "Copies ASDP Agent rules, skills, and workflows from global storage into the local project (.agent folder).",
+				InputSchema: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "Project root path. Default: .",
+						},
+					},
+				},
+			},
 		},
 	}, nil
 }
@@ -210,6 +247,25 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		}
 
 		resultMsg, err := s.scaffoldUC.Execute(params)
+		if err != nil {
+			return &CallToolResult{
+				IsError: true,
+				Content: []ToolContent{{Type: "text", Text: err.Error()}},
+			}, nil
+		}
+
+		return &CallToolResult{
+			Content: []ToolContent{{Type: "text", Text: resultMsg}},
+		}, nil
+	}
+
+	if callParams.Name == "asdp_init_agent" {
+		path, ok := callParams.Arguments["path"].(string)
+		if !ok || path == "" {
+			path = "."
+		}
+
+		resultMsg, err := s.initAgentUC.Execute(path)
 		if err != nil {
 			return &CallToolResult{
 				IsError: true,

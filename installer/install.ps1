@@ -140,3 +140,23 @@ Configure-MCPServer -ConfigPath $CursorPath
 
 Write-Host "ASDP installed successfully!" -ForegroundColor Green
 Write-Host "Run 'asdp' to start."
+
+# 5. Interactive Project Initialization
+Write-Host ""
+$choice = Read-Host "Do you want to initialize ASDP in the current directory? (y/N)"
+if ($choice -eq "y") {
+    $AgentDir = ".\.agent"
+    Write-Host "Initializing ASDP in $((Get-Location).Path)..."
+    if (!(Test-Path $AgentDir)) {
+        New-Item -ItemType Directory -Path $AgentDir -Force | Out-Null
+    }
+
+    # Copy from global core/agent if it exists
+    $SrcAgent = "$env:USERPROFILE\.asdp\core\agent"
+    if (Test-Path $SrcAgent) {
+        Copy-Item -Path "$SrcAgent\*" -Destination $AgentDir -Recurive -Force
+        Write-Host "Project initialized successfully in $AgentDir" -ForegroundColor Green
+    } else {
+        Write-Host "Warning: Global agent templates not found at $SrcAgent" -ForegroundColor Yellow
+    }
+}

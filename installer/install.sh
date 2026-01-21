@@ -192,3 +192,22 @@ configure_mcp_server "$HOME/Library/Application Support/Cursor/User/globalStorag
 
 echo -e "${GREEN}ASDP installed successfully!${NC}"
 echo "Run 'asdp' to start."
+
+# 6. Interactive Project Initialization
+echo ""
+read -p "Do you want to initialize ASDP in the current directory? (y/N): " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    AGENT_DIR="./.agent"
+    echo "Initializing ASDP in $(pwd)..."
+    mkdir -p "$AGENT_DIR"
+    
+    # Copy from global core/agent if it exists
+    SRC_AGENT="$INSTALL_BASE/core/agent"
+    if [ -d "$SRC_AGENT" ]; then
+        cp -r "$SRC_AGENT/"* "$AGENT_DIR/"
+        echo -e "${GREEN}Project initialized successfully in $AGENT_DIR${NC}"
+    else
+        echo -e "${YELLOW}Warning: Global agent templates not found at $SRC_AGENT${NC}"
+    fi
+fi
