@@ -3,8 +3,7 @@
 When a new folder is created:
 
 1. Add the folder entry to `codetree.md`.
-2. Create `<new-folder>/codespec.md` using `~/.asdp/core/spec/codespec.md`.
-3. Create `<new-folder>/codemodel.md` using `~/.asdp/core/spec/codemodel.md` when the folder has code elements.
-    > **Tip**: Use `asdp_scaffold` (e.g., `{"name": "my-folder", "type": "library"}`) to perform steps 2 and 3 automatically with valid templates.
-4. Update parent `codespec.md` and `codemodel.md` recursively up to root if module boundaries, responsibilities, or elements change.
-5. Append changelog entries to all updated documents.
+2. Create `<new-folder>/codespec.md` and `<new-folder>/codemodel.md` from spec.
+    > **Tool**: `asdp_scaffold` (creates folder + templated docs).
+3. Update parent `codespec.md` and `codemodel.md` recursively up to root if module boundaries, responsibilities, or elements change.
+4. Append changelog entries to all updated documents.
