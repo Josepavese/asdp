@@ -92,7 +92,7 @@ func (uc *SyncModelUseCase) Execute(path string) (*SyncResult, error) {
 	})
 
 	newMeta := domain.CodeModelMeta{
-		ASDPVersion: "1.0.0",
+		ASDPVersion: domain.Version,
 		Integrity: domain.Integrity{
 			SrcHash:      newHash,
 			Algorithm:    "sha256",
