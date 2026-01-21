@@ -12,20 +12,22 @@ import (
 )
 
 type Server struct {
-	queryUC     *usecase.QueryContextUseCase
-	syncUC      *usecase.SyncModelUseCase
-	scaffoldUC  *usecase.ScaffoldUseCase
-	initAgentUC *usecase.InitAgentUseCase
-	syncTreeUC  *usecase.SyncTreeUseCase
+	queryUC       *usecase.QueryContextUseCase
+	syncUC        *usecase.SyncModelUseCase
+	scaffoldUC    *usecase.ScaffoldUseCase
+	initAgentUC   *usecase.InitAgentUseCase
+	syncTreeUC    *usecase.SyncTreeUseCase
+	initProjectUC *usecase.InitProjectUseCase
 }
 
-func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase) *Server {
+func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase, initProjectUC *usecase.InitProjectUseCase) *Server {
 	return &Server{
-		queryUC:     queryUC,
-		syncUC:      syncUC,
-		scaffoldUC:  scaffoldUC,
-		initAgentUC: initAgentUC,
-		syncTreeUC:  syncTreeUC,
+		queryUC:       queryUC,
+		syncUC:        syncUC,
+		scaffoldUC:    scaffoldUC,
+		initAgentUC:   initAgentUC,
+		syncTreeUC:    syncTreeUC,
+		initProjectUC: initProjectUC,
 	}
 }
 
@@ -120,7 +122,7 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 		Tools: []ToolDefinition{
 			{
 				Name:        "asdp_query_context",
-				Description: "Retrieve the ASDP context (Spec, Model, Freshness) for a given absolute path.",
+				Description: "Retrieve the ASDP context (Spec, Model, Freshness) for a given absolute path. Result: Returns a JSON object containing the merged CodeSpec (intent), CodeModel (structure), and current freshness status, allowing an agent to quickly understand a module's contract and implementation.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -134,7 +136,7 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 			},
 			{
 				Name:        "asdp_sync_codemodel",
-				Description: "Automatically scans the source code and updates the codemodel.md file. Requires an absolute path.",
+				Description: "Automatically scans the source code and updates the codemodel.md file. Result: Returns a SyncResult JSON with the count of symbols identified (functions, structs, interfaces including start/end lines) and the integrity hash of the source files.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -147,8 +149,22 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 				},
 			},
 			{
+				Name:        "asdp_sync_codetree",
+				Description: "Automatically scans the project directory and updates the codetree.md file. Result: Returns a JSON representation of the project hierarchy, listing all modules and their ASDP compliance status (presence of codespec/codemodel).",
+				InputSchema: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "ABSOLUTE path to the project root or sub-directory.",
+						},
+					},
+					"required": []string{"path"},
+				},
+			},
+			{
 				Name:        "asdp_scaffold",
-				Description: "Create a new ASDP-compliant module. Use name='.' to initialize the current directory (in-place).",
+				Description: "Create a new ASDP-compliant module. Result: Returns a success message and creates the directory structure including initial codespec.md and codemodel.md files.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -170,7 +186,7 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 			},
 			{
 				Name:        "asdp_init_agent",
-				Description: "Copies ASDP Agent assets into the local project. Specify the project root as an absolute path.",
+				Description: "Copies ASDP Agent assets into the local project. Result: Returns a list of files copied into the .agent/ directory (Rules, Workflows, etc.) to enable ASDP-native agent behavior.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -179,6 +195,24 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 							"description": "ABSOLUTE project root path (e.g. /home/user/project)",
 						},
 					},
+				},
+			},
+			{
+				Name:        "asdp_init_project",
+				Description: "Unified initialization of an ASDP project. Result: Sets up .agent/ at project path AND anchors the CodeTree at a specified code path, ensuring the AI starts from the real code.",
+				InputSchema: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "ABSOLUTE project repository root path.",
+						},
+						"code_path": map[string]interface{}{
+							"type":        "string",
+							"description": "ABSOLUTE path to where the actual code starts (e.g. /repo/tools).",
+						},
+					},
+					"required": []string{"path", "code_path"},
 				},
 			},
 		},
@@ -191,12 +225,9 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		return nil, &RpcError{Code: -32700, Message: "Parse error"}
 	}
 
-	if callParams.Name == "asdp_query_context" {
-		path, ok := callParams.Arguments["path"].(string)
-		if !ok || path == "" {
-			path = "."
-		}
-
+	switch callParams.Name {
+	case "asdp_query_context":
+		path, _ := callParams.Arguments["path"].(string)
 		ctx, err := s.queryUC.Execute(path)
 		if err != nil {
 			return &CallToolResult{
@@ -204,19 +235,13 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 				Content: []ToolContent{{Type: "text", Text: err.Error()}},
 			}, nil
 		}
-
 		jsonBytes, _ := json.MarshalIndent(ctx, "", "  ")
 		return &CallToolResult{
 			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
 		}, nil
-	}
 
-	if callParams.Name == "asdp_sync_codemodel" {
-		path, ok := callParams.Arguments["path"].(string)
-		if !ok || path == "" {
-			path = "."
-		}
-
+	case "asdp_sync_codemodel":
+		path, _ := callParams.Arguments["path"].(string)
 		res, err := s.syncUC.Execute(path)
 		if err != nil {
 			return &CallToolResult{
@@ -224,62 +249,63 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 				Content: []ToolContent{{Type: "text", Text: err.Error()}},
 			}, nil
 		}
-
 		jsonBytes, _ := json.MarshalIndent(res, "", "  ")
 		return &CallToolResult{
 			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
 		}, nil
-	}
 
-	if callParams.Name == "asdp_scaffold" {
+	case "asdp_sync_codetree":
+		path, _ := callParams.Arguments["path"].(string)
+		res, err := s.syncTreeUC.Execute(path)
+		if err != nil {
+			return &CallToolResult{
+				IsError: true,
+				Content: []ToolContent{{Type: "text", Text: err.Error()}},
+			}, nil
+		}
+		jsonBytes, _ := json.MarshalIndent(res, "", "  ")
+		return &CallToolResult{
+			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
+		}, nil
+
+	case "asdp_scaffold":
 		name, _ := callParams.Arguments["name"].(string)
 		modType, _ := callParams.Arguments["type"].(string)
 		path, _ := callParams.Arguments["path"].(string)
-
 		if name == "" {
 			return nil, &RpcError{Code: -32602, Message: "Missing required argument: name"}
 		}
 		if modType == "" {
 			modType = "library"
 		}
-
-		params := usecase.ScaffoldParams{
+		resultMsg, err := s.scaffoldUC.Execute(usecase.ScaffoldParams{
 			Name: name,
 			Type: modType,
 			Path: path,
-		}
-
-		resultMsg, err := s.scaffoldUC.Execute(params)
+		})
 		if err != nil {
-			return &CallToolResult{
-				IsError: true,
-				Content: []ToolContent{{Type: "text", Text: err.Error()}},
-			}, nil
+			return &CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}, nil
 		}
+		return &CallToolResult{Content: []ToolContent{{Type: "text", Text: resultMsg}}}, nil
 
-		return &CallToolResult{
-			Content: []ToolContent{{Type: "text", Text: resultMsg}},
-		}, nil
-	}
-
-	if callParams.Name == "asdp_init_agent" {
-		path, ok := callParams.Arguments["path"].(string)
-		if !ok || path == "" {
-			path = "."
-		}
-
+	case "asdp_init_agent":
+		path, _ := callParams.Arguments["path"].(string)
 		resultMsg, err := s.initAgentUC.Execute(path)
 		if err != nil {
-			return &CallToolResult{
-				IsError: true,
-				Content: []ToolContent{{Type: "text", Text: err.Error()}},
-			}, nil
+			return &CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}, nil
 		}
+		return &CallToolResult{Content: []ToolContent{{Type: "text", Text: resultMsg}}}, nil
 
-		return &CallToolResult{
-			Content: []ToolContent{{Type: "text", Text: resultMsg}},
-		}, nil
+	case "asdp_init_project":
+		path, _ := callParams.Arguments["path"].(string)
+		codePath, _ := callParams.Arguments["code_path"].(string)
+		resultMsg, err := s.initProjectUC.Execute(path, codePath)
+		if err != nil {
+			return &CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}, nil
+		}
+		return &CallToolResult{Content: []ToolContent{{Type: "text", Text: resultMsg}}}, nil
+
+	default:
+		return nil, &RpcError{Code: -32601, Message: fmt.Sprintf("Tool not found: %s", callParams.Name)}
 	}
-
-	return nil, &RpcError{Code: -32601, Message: fmt.Sprintf("Tool not found: %s", callParams.Name)}
 }

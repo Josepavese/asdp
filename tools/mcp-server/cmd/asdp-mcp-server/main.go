@@ -41,8 +41,10 @@ func main() {
 		return
 	}
 
+	initProjectUC := usecase.NewInitProjectUseCase(initAgentUC, syncTreeUC, scaffoldUC)
+
 	// Mode 2: MCP Server (Default)
 	fmt.Fprintf(os.Stderr, "ASDP MCP Server v%s started.\n", domain.Version)
-	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC)
+	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC, initProjectUC)
 	mcpServer.Serve()
 }
