@@ -17,9 +17,10 @@ asdp_version: "1.0.0"
 
 # Integrity Hash (for Stallness Detection)
 integrity:
-  src_hash: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  src_hash: "bcda23..."
   algorithm: "sha256"
-  checked_at: "2023-10-27T10:00:00Z"
+  last_modified: 2026-01-21T18:00:00Z
+  checked_at: 2026-01-21T18:05:00Z
 
 # Symbols (Classes, Functions, Constants)
 symbols:
@@ -27,12 +28,14 @@ symbols:
     kind: "struct"
     exported: true
     line: 14
+    line_end: 22
     signature: "struct Client"
     
   - name: "NewClient"
     kind: "function"
     exported: true
     line: 45
+    line_end: 55
     signature: "func NewClient(timeout time.Duration) *Client"
     docstring: "Creates a new HTTP client with default retry policies."
 
@@ -40,6 +43,8 @@ symbols:
     kind: "method"
     parent: "Client"
     exported: true
+    line: 60
+    line_end: 72
     signature: "func (c *Client) Get(url string) (*Response, error)"
 ---
 ```

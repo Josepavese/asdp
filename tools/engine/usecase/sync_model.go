@@ -78,12 +78,26 @@ func (uc *SyncModelUseCase) Execute(path string) (*SyncResult, error) {
 	// For now, let's always update to ensure correctness.
 
 	// 5. Construct new Metadata
+	lastModified := time.Time{}
+	uc.fs.Walk(path, func(p string, isDir bool) error {
+		if isDir {
+			return nil
+		}
+		if info, err := uc.fs.Stat(p); err == nil {
+			if info.ModTime().After(lastModified) {
+				lastModified = info.ModTime()
+			}
+		}
+		return nil
+	})
+
 	newMeta := domain.CodeModelMeta{
 		ASDPVersion: "1.0.0",
 		Integrity: domain.Integrity{
-			SrcHash:   newHash,
-			Algorithm: "sha256",
-			CheckedAt: time.Now(),
+			SrcHash:      newHash,
+			Algorithm:    "sha256",
+			LastModified: lastModified,
+			CheckedAt:    time.Now(),
 		},
 		Symbols: symbols,
 	}

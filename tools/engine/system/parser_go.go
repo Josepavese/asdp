@@ -43,6 +43,7 @@ func (p *GoASTParser) ParseDir(root string) ([]domain.Symbol, error) {
 						Kind:      "function",
 						Exported:  fn.Name.IsExported(),
 						Line:      pos.Line,
+						LineEnd:   fset.Position(fn.End()).Line,
 						Docstring: strings.TrimSpace(fn.Doc.Text()),
 						Signature: formatFuncSignature(fn),
 					}
@@ -71,6 +72,7 @@ func (p *GoASTParser) ParseDir(root string) ([]domain.Symbol, error) {
 								Name:      typeSpec.Name.Name,
 								Exported:  typeSpec.Name.IsExported(),
 								Line:      pos.Line,
+								LineEnd:   fset.Position(typeSpec.End()).Line,
 								Docstring: strings.TrimSpace(gen.Doc.Text()),
 								Signature: fmt.Sprintf("type %s", typeSpec.Name.Name),
 							}

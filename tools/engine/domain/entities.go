@@ -46,9 +46,10 @@ type CodeModelMeta struct {
 }
 
 type Integrity struct {
-	SrcHash   string    `yaml:"src_hash"`
-	Algorithm string    `yaml:"algorithm"`
-	CheckedAt time.Time `yaml:"checked_at"`
+	SrcHash      string    `yaml:"src_hash"`
+	Algorithm    string    `yaml:"algorithm"`
+	LastModified time.Time `yaml:"last_modified"`
+	CheckedAt    time.Time `yaml:"checked_at"`
 }
 
 type Symbol struct {
@@ -56,6 +57,7 @@ type Symbol struct {
 	Kind      string `yaml:"kind"` // function, struct, class
 	Exported  bool   `yaml:"exported"`
 	Line      int    `yaml:"line"`
+	LineEnd   int    `yaml:"line_end"`
 	Signature string `yaml:"signature"`
 	Docstring string `yaml:"docstring,omitempty"`
 	Parent    string `yaml:"parent,omitempty"`
@@ -76,13 +78,14 @@ type CodeTreeMeta struct {
 }
 
 type Component struct {
-	Name        string      `yaml:"name"`
-	Type        string      `yaml:"type"`
-	Path        string      `yaml:"path"`
-	Description string      `yaml:"description"`
-	HasSpec     bool        `yaml:"has_spec"`
-	HasModel    bool        `yaml:"has_model"`
-	Children    []Component `yaml:"children,omitempty"`
+	Name         string      `yaml:"name"`
+	Type         string      `yaml:"type"`
+	Path         string      `yaml:"path"`
+	Description  string      `yaml:"description"`
+	LastModified time.Time   `yaml:"last_modified"`
+	HasSpec      bool        `yaml:"has_spec"`
+	HasModel     bool        `yaml:"has_model"`
+	Children     []Component `yaml:"children,omitempty"`
 }
 
 type Verification struct {

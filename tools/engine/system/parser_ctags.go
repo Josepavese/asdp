@@ -28,6 +28,7 @@ type CtagsEntry struct {
 	Scope     string `json:"scope"`
 	ScopeKind string `json:"scopeKind"`
 	Line      int    `json:"line"`
+	End       int    `json:"end"`
 	Signature string `json:"signature"` // Custom field often not present by default
 	Pattern   string `json:"pattern"`   // Regex pattern to find the line
 }
@@ -43,9 +44,9 @@ func (p *CtagsParser) ParseDir(root string) ([]domain.Symbol, error) {
 
 	// Run ctags (NON-RECURSIVE)
 	// --output-format=json : standardized JSON output
-	// --fields=+nK : line number, kind
+	// --fields=+nKe : line number, kind, end line
 	// --exclude=*.go : let GoASTParser handle Go files
-	cmd := exec.Command(p.BinaryPath, "--output-format=json", "--fields=+nK", "--exclude=*.go", root)
+	cmd := exec.Command(p.BinaryPath, "--output-format=json", "--fields=+nKe", "--exclude=*.go", root)
 
 	// We capture stdout
 	var out bytes.Buffer
@@ -78,6 +79,7 @@ func (p *CtagsParser) ParseDir(root string) ([]domain.Symbol, error) {
 			Name:      entry.Name,
 			Kind:      entry.Kind,
 			Line:      entry.Line,
+			LineEnd:   entry.End,
 			Exported:  true,          // Assume exported by default for non-Go langs
 			Signature: entry.Pattern, // Use pattern as rough signature surrogate
 		}
