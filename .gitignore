@@ -1,0 +1,4 @@
+improvements
+# ignore all code*.md files inside tools
+/tools/**/code*.md
+

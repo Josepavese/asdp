@@ -5,5 +5,5 @@ description: Restore ASDP documentation when CodeSpec/CodeModel/CodeTree are mis
 
 # ASDP Doc Rebuilder
 
-- Use the workflow as the single source of truth: run `/asdp-spec-sync` ( `.agent/workflows/asdp-spec-sync.md` ).
+- Use the workflow as the single source of truth: run `/asdp-spec-sync` ( `~/.asdp/core/agent/workflows/asdp-spec-sync.md` ).
 - Follow the workflow steps exactly to rebuild/verify ASDP docs; do not improvise new steps here.

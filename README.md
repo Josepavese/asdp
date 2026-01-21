@@ -1,27 +1,46 @@
-# ASDP — Agentic Spec Driven Programming
+# ASDP: Agentic Spec Driven Programming
 
-Reference repo for the ASDP protocol: a documentation-first workflow for AI agents. It defines how to structure projects with canonical specs so architecture stays aligned with code.
+ASDP is a protocol designed to bridge the gap between AI Agents and Codebases. It enforces a documentation-first workflow where "The Spec is the Truth."
 
-## What this is
+> **Status**: Core Implementation Complete (v0.1.0)
 
-- Minimal spec set for agents to plan, edit, and sync code via documentation contracts.
-- Templates that describe the required shape of CodeTree, CodeSpec, and CodeModel files.
-- Rulebooks that enforce read-before-work, sync guarantees, and completion checks.
+## Project Structure
 
-## Repository layout
+- **`core/`**: The "Standard Library" of ASDP (Protocol definitions, Rules, Skills).
+  - **`spec/`**: Formal definitions (`codespec`, `codemodel`, `codetree`).
+  - **`agent/`**: Rules and Workflows for AI agents.
+- **`tools/`**: The reference implementation ("The Kit").
+  - **`engine/`**: The shared Go library implementing the ASDP logic.
+  - **`mcp-server/`**: The MCP server that exposes ASDP capabilities.
+- **`installer/`**: Cross-platform installation scripts.
 
-- `spec/asdp/` — format definitions for `codetree.md`, `codespec.md`, and `codemodel.md`.
-- `.agent/rules/` — process rules for planning/editing, doc synchronization, and post-work duties.
-- Root docs — `codetree.md`, `codespec.md`, `codemodel.md` describing this repo’s own structure.
+## Installation
 
-## How to use
+You can install the ASDP CLis using the provided scripts:
 
-1) Read `rules/before-planning-or-editing.rules.md`, then root `codetree.md`, `codespec.md`, `codemodel.md`.
-2) When working in a folder, also read its `codespec.md` and `codemodel.md`.
-3) Apply changes; ensure code matches the docs (docs are canonical).
-4) Sync docs per `rules/after-editing-or-task-complete.rules.md` and update changelog entries.
+**Linux/macOS**:
 
-## When to extend
+```bash
+./installer/install.sh
+```
 
-- New folders: add to `codetree.md` and create matching `codespec.md`/`codemodel.md`.
-- New behaviors or APIs: update the relevant `codespec.md` and `codemodel.md` in that folder and parents as needed.
+**Windows (PowerShell)**:
+
+```powershell
+./installer/install.ps1
+```
+
+## Features
+
+The `asdp` binary (MCP Server) provides the following tools:
+
+1. **`asdp_query_context`**: Reads `codespec.md` and `codemodel.md`, verifying their freshness.
+2. **`asdp_sync_codemodel`**: Automatically parses source code (Go + Polyglot Ctags) and updates `codemodel.md`.
+3. **`asdp_scaffold`**: Creates new ASDP-compliant modules with standard templates.
+
+## Contributing
+
+This project itself follows ASDP.
+
+- `tools/codetree.md`: The root map of the tools.
+- `tools/mcp-server/codespec.md`: The spec for the server.
