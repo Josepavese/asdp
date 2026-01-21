@@ -16,14 +16,16 @@ type Server struct {
 	syncUC      *usecase.SyncModelUseCase
 	scaffoldUC  *usecase.ScaffoldUseCase
 	initAgentUC *usecase.InitAgentUseCase
+	syncTreeUC  *usecase.SyncTreeUseCase
 }
 
-func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase) *Server {
+func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase) *Server {
 	return &Server{
 		queryUC:     queryUC,
 		syncUC:      syncUC,
 		scaffoldUC:  scaffoldUC,
 		initAgentUC: initAgentUC,
+		syncTreeUC:  syncTreeUC,
 	}
 }
 

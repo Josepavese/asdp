@@ -27,6 +27,7 @@ func main() {
 	syncUC := usecase.NewSyncModelUseCase(fs, parser, hasher)
 	scaffoldUC := usecase.NewScaffoldUseCase(fs)
 	initAgentUC := usecase.NewInitAgentUseCase(fs)
+	syncTreeUC := usecase.NewSyncTreeUseCase(fs)
 
 	// Mode 1: Query CLI (Testing)
 	if *queryPath != "" {
@@ -42,6 +43,6 @@ func main() {
 
 	// Mode 2: MCP Server (Default)
 	fmt.Fprintf(os.Stderr, "ASDP MCP Server v%s started.\n", domain.Version)
-	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC)
+	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC)
 	mcpServer.Serve()
 }
