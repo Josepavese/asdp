@@ -62,91 +62,123 @@ func (uc *SyncTreeUseCase) Execute(path string) (*domain.CodeTree, error) {
 }
 
 func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*domain.Component, error) {
+	relPath, _ := filepath.Rel(root, currentPath)
+	if relPath == "." {
+		relPath = "./"
+	} else {
+		relPath = "./" + relPath
+	}
+
 	comp := &domain.Component{
 		Name: filepath.Base(currentPath),
-		Path: currentPath,
+		Path: relPath,
 		Type: "module", // Default
 	}
 
-	// Check for ASDP files
-	if _, err := uc.fs.Stat(filepath.Join(currentPath, "codespec.md")); err == nil {
+	// Check and parse ASDP files for metadata
+	specPath := filepath.Join(currentPath, "codespec.md")
+	if data, err := uc.fs.ReadFile(specPath); err == nil {
 		comp.HasSpec = true
+		if spec, err := parseCodeSpec(data); err == nil && spec != nil {
+			if spec.MetaData.Type != "" {
+				comp.Type = spec.MetaData.Type
+			}
+			if spec.MetaData.Title != "" {
+				comp.Description = spec.MetaData.Title
+			} else if spec.MetaData.Summary != "" {
+				comp.Description = spec.MetaData.Summary
+			}
+		}
 	}
+
 	if _, err := uc.fs.Stat(filepath.Join(currentPath, "codemodel.md")); err == nil {
 		comp.HasModel = true
 	}
 
+	// Calculate LastModified for this directory
+	latest := time.Time{}
+	if info, err := uc.fs.Stat(currentPath); err == nil {
+		latest = info.ModTime()
+	}
+
 	// Read children
-	// Wait, RealFileSystem has Walk, but not ReadDir exposed.
-	// Actually, I can use filepath.Walk but I want to control recursion.
-	// Let's assume I can use os.ReadDir via a cast or add it to interface.
-	// For now, let's use Walk but skip sub-sub directories manually? No that's inefficient.
-	// I'll use standard os.ReadDir since RealFileSystem is just a wrapper around os.
-	// BUT wait, I need to test this. The interface is in domain.
-	// domain.FileSystem has: ReadFile, WriteFile, MkdirAll, Walk, Stat.
-	// It DOES NOT have ReadDir. I should add it or use Walk non-recursively strategy.
-
-	// Strategy: Use Walk but return SkipDir for all subdirectories.
 	var children []domain.Component
-	var err error
-
-	// We can't easily use Walk to just list children without hacky logic.
-	// I will read directories directly using `os` for now, assuming local FS.
-	// ideally I should update the interface. Let's do that properly next time.
-	// For now, I'll use `filepath.Walk` with depth control logic? No.
-	// I'll update the Interface! No, I can't easily change `domain/interfaces.go` without breaking mocks if any.
-	// Let's check `tools/engine/domain/interfaces.go`.
 
 	// Hack: I'll use `Walk` to find immediate children
-	err = uc.fs.Walk(currentPath, func(path string, isDir bool) error {
+	err := uc.fs.Walk(currentPath, func(path string, isDir bool) error {
 		if path == currentPath {
 			return nil // Root of this walk
 		}
 
+		// Update latest mtime for ANY file found in this walk (to detect deep changes)
+		if info, err := uc.fs.Stat(path); err == nil {
+			if info.ModTime().After(latest) {
+				latest = info.ModTime()
+			}
+		}
+
 		// We only want immediate children for this node.
-		// If the path is deeper than immediate child, skip it.
 		rel, _ := filepath.Rel(currentPath, path)
 		if len(strings.Split(rel, string(os.PathSeparator))) > 1 {
 			if isDir {
-				return fs.SkipDir // It's a grandchild directory, skip traversing inside it here
+				return fs.SkipDir
 			}
-			return nil // It's a grandchild file, ignore
+			return nil
 		}
 
 		if !isDir {
-			return nil // We only care about directories as components
+			return nil
 		}
 
-		// It is an immediate child directory.
-		if isIgnoredDir(filepath.Base(path)) {
+		dirName := filepath.Base(path)
+		if isIgnoredDir(dirName) {
+			return fs.SkipDir
+		}
+
+		if isShallowDir(dirName) {
+			childRel, _ := filepath.Rel(root, path)
+			children = append(children, domain.Component{
+				Name:         dirName,
+				Path:         "./" + childRel,
+				Type:         "dependency",
+				Description:  "External dependencies (not scanned)",
+				LastModified: latest, // Best effort
+			})
 			return fs.SkipDir
 		}
 
 		// Recurse to build sub-component
-		var childComp *domain.Component
-		childComp, err = uc.buildComponent(root, path)
+		childComp, err := uc.buildComponent(root, path)
 		if err != nil {
-			return err // Propagate error? Or log and skip?
+			return err
 		}
 		children = append(children, *childComp)
 
-		return fs.SkipDir // We verified this child, don't let Walk traverse inside it again, we handle recursion manually via buildComponent
+		return fs.SkipDir
 	})
 
 	comp.Children = children
+	comp.LastModified = latest
 	return comp, err
 }
 
-// Duplicated ignore logic (should centralize later)
 func isIgnoredDir(name string) bool {
-	ignored := []string{".git", ".idea", ".vscode", "node_modules", "vendor", "dist", "build", "structs"} // Added structs just in case
+	ignored := []string{".git", ".idea", ".vscode", "dist", "build", ".github", "__pycache__", "structs"}
 	for _, idx := range ignored {
 		if name == idx {
 			return true
 		}
 	}
-	if strings.HasPrefix(name, ".") {
-		return true
+	// Skip hidden dirs except those we might want to scan (though usually they are config)
+	return strings.HasPrefix(name, ".") && name != "."
+}
+
+func isShallowDir(name string) bool {
+	shallow := []string{"node_modules", "vendor", "bower_components"}
+	for _, idx := range shallow {
+		if name == idx {
+			return true
+		}
 	}
 	return false
 }
