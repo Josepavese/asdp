@@ -61,6 +61,11 @@ func (uc *QueryContextUseCase) Execute(path string) (*ContextResponse, error) {
 		if err == nil {
 			resp.Model = model
 			resp.Model.Body = ""
+
+			// Optimize Payload: Strip docstrings to prevent JSON truncation
+			for i := range resp.Model.MetaData.Symbols {
+				resp.Model.MetaData.Symbols[i].Docstring = ""
+			}
 		}
 	}
 
