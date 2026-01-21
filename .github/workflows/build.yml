@@ -1,0 +1,35 @@
+name: build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.x'
+
+    - name: Install dependencies
+      run: |
+        cd tools/engine && go mod download
+        cd ../mcp-server && go mod download
+
+    - name: Run Tests (Engine)
+      run: cd tools/engine && go test -v ./...
+
+    - name: Run Tests (MCP Server)
+      run: cd tools/mcp-server && go test -v ./...
+
+    - name: Build Check (MCP Server)
+      run: |
+        cd tools/mcp-server
+        go build -v -o asdp-check ./cmd/asdp-mcp-server/main.go
