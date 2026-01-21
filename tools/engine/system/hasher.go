@@ -19,28 +19,57 @@ func NewSHA256ContentHasher() *SHA256ContentHasher {
 }
 
 // HashDir calculates a deterministic hash of the semantic content of a directory.
-// It ignores hidden files (dotfiles), test files (_test.go), and docs (.md).
+// It ignores dependencies, build artifacts, environments, and hidden files.
 func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 	var files []string
 
+	ignoredPatterns := []string{
+		"node_modules", "vendor", "packages", "bower_components", // Dependencies
+		"venv", ".venv", "anaconda", "conda", "env", ".env", // Environments
+		"bin", "obj", "dist", "target", "build", "out", // Builds
+		".vscode", ".idea", ".git", ".hg", ".svn", ".cache", // IDE/System
+	}
+
+	isIgnored := func(name string) bool {
+		name = strings.ToLower(name)
+		for _, p := range ignoredPatterns {
+			if strings.Contains(name, p) {
+				return true
+			}
+		}
+		return false
+	}
+
 	// 1. Walk and collect relevant files
 	err := h.fs.Walk(root, func(path string, isDir bool) error {
+		name := filepath.Base(path)
+
 		if isDir {
-			if strings.HasPrefix(filepath.Base(path), ".") && path != root {
-				return filepath.SkipDir // Skip hidden dirs like .git
+			// Skip ignored directories entirely for performance
+			if isIgnored(name) || (strings.HasPrefix(name, ".") && path != root) {
+				return filepath.SkipDir
 			}
 			return nil
 		}
 
-		name := filepath.Base(path)
-		// Filtering rules:
-		// - Skip hidden files
+		// Filtering rules for files:
+		// - Skip if parent/name is ignored
 		// - Skip markdown (docs shouldn't invalidate code hash)
 		// - Skip tests (optional, but good for "Interface Stability")
-		if strings.HasPrefix(name, ".") ||
+		if isIgnored(name) ||
+			strings.HasPrefix(name, ".") ||
 			strings.HasSuffix(name, ".md") ||
 			strings.HasSuffix(name, "_test.go") {
 			return nil
+		}
+
+		// Extra safety: Check if it's a regular file or a symlink to a file
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil // Skip files we can't stat
+		}
+		if !info.Mode().IsRegular() {
+			return nil // Skip directories (if missed by choice), symlinks to dirs, devices, etc.
 		}
 
 		files = append(files, path)
@@ -58,7 +87,7 @@ func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 	for _, file := range files {
 		f, err := os.Open(file)
 		if err != nil {
-			return "", err
+			continue // Skip files we can't open after collection
 		}
 
 		// Hash filename first (to detect renames)

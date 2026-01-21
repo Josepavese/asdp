@@ -42,7 +42,7 @@ func main() {
 	}
 
 	// Mode 2: MCP Server (Default)
-	fmt.Fprintf(os.Stderr, "ASDP MCP Server v0.1.0 started.\n")
+	fmt.Fprintf(os.Stderr, "ASDP MCP Server v0.1.6 started.\n")
 	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC)
 	mcpServer.Serve()
 }
