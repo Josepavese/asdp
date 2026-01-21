@@ -107,5 +107,68 @@ if [ -n "$SHELL_RC" ]; then
     fi
 fi
 
+
+# --- MCP Configuration Logic ---
+
+configure_mcp_server() {
+    local CONFIG_PATH="$1"
+    local SERVER_NAME="asdp"
+    local BIN_PATH="${INSTALL_DIR}/${APP_NAME}"
+
+    if [ -f "$CONFIG_PATH" ]; then
+        echo "Found MCP config: $CONFIG_PATH"
+        
+        # Inline Python script to safely update JSON
+        python3 -c "
+import json
+import sys
+import os
+
+config_path = '$CONFIG_PATH'
+server_name = '$SERVER_NAME'
+bin_path = '$BIN_PATH'
+
+try:
+    with open(config_path, 'r') as f:
+        data = json.load(f)
+except Exception as e:
+    print(f'Error reading {config_path}: {e}')
+    sys.exit(1)
+
+# Ensure 'mcpServers' key exists
+if 'mcpServers' not in data:
+    data['mcpServers'] = {}
+
+# Update or Add ASDP entry
+data['mcpServers'][server_name] = {
+    'command': bin_path,
+    'args': [],
+    'env': {}
+}
+
+try:
+    with open(config_path, 'w') as f:
+        json.dump(data, f, indent=4)
+    print(f'Successfully updated {server_name} in {config_path}')
+except Exception as e:
+    print(f'Error writing {config_path}: {e}')
+    sys.exit(1)
+"
+    fi
+}
+
+echo "Configuring IDE Integrations..."
+
+# VS Code (Linux)
+configure_mcp_server "$HOME/.config/Code/User/globalStorage/mcp-servers.json"
+# VS Code (macOS)
+configure_mcp_server "$HOME/Library/Application Support/Code/User/globalStorage/mcp-servers.json"
+# Claude Desktop (macOS)
+configure_mcp_server "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
+# Cursor (Linux)
+configure_mcp_server "$HOME/.config/Cursor/User/globalStorage/mcp-servers.json"
+# Cursor (macOS)
+configure_mcp_server "$HOME/Library/Application Support/Cursor/User/globalStorage/mcp-servers.json"
+
 echo -e "${GREEN}ASDP installed successfully!${NC}"
-echo "Run '${APP_NAME}' to start."
+echo "Run 'asdp' to start."

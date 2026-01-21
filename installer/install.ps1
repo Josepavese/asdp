@@ -62,4 +62,58 @@ if ($UserPath -notlike "*$InstallDir*") {
     Write-Host "Path already configured."
 }
 
+
+# --- MCP Configuration Logic ---
+function Configure-MCPServer {
+    param (
+        [string]$ConfigPath
+    )
+
+    if (Test-Path $ConfigPath) {
+        Write-Host "Found MCP config: $ConfigPath"
+        try {
+            $jsonContent = Get-Content $ConfigPath -Raw | ConvertFrom-Json -Depth 10 # Depth needed for nested objects
+
+            # Ensure mcpServers object exists (PowerShell PSCustomObject weirdness handling)
+            if (-not $jsonContent.PSObject.Properties.Match('mcpServers').Count) {
+                $jsonContent | Add-Member -MemberType NoteProperty -Name "mcpServers" -Value @{}
+            }
+
+            # Create the ASDP server config object
+            $asdpConfig = @{
+                command = "$InstallDir\$AppName.exe"
+                args    = @()
+                env     = @{}
+            }
+
+            # Add or Update ASDP entry
+            # Note: Manipulating nested PSCHustomObjects usually requires re-creating them or specific casting
+            # A simpler way for this specific structure:
+            if ($null -eq $jsonContent.mcpServers.asdp) {
+                 $jsonContent.mcpServers | Add-Member -MemberType NoteProperty -Name "asdp" -Value $asdpConfig
+            } else {
+                 $jsonContent.mcpServers.asdp = $asdpConfig
+            }
+            
+            $jsonContent | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath
+            Write-Host "Successfully updated ASDP in $ConfigPath" -ForegroundColor Green
+        } catch {
+            Write-Host "Error updating config $ConfigPath : $_" -ForegroundColor Red
+        }
+    }
+}
+
+Write-Host "Configuring IDE Integrations..."
+
+# Common Windows Paths
+$AppData = $env:APPDATA
+$VSCodePath = "$AppData\Code\User\globalStorage\mcp-servers.json"
+$ClaudePath = "$AppData\Claude\claude_desktop_config.json"
+$CursorPath = "$AppData\Cursor\User\globalStorage\mcp-servers.json"
+
+Configure-MCPServer -ConfigPath $VSCodePath
+Configure-MCPServer -ConfigPath $ClaudePath
+Configure-MCPServer -ConfigPath $CursorPath
+
 Write-Host "ASDP installed successfully!" -ForegroundColor Green
+Write-Host "Run 'asdp' to start."
