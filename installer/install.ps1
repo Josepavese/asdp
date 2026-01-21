@@ -137,6 +137,7 @@ $CursorPath = "$AppData\Cursor\User\globalStorage\mcp-servers.json"
 Configure-MCPServer -ConfigPath $VSCodePath
 Configure-MCPServer -ConfigPath $ClaudePath
 Configure-MCPServer -ConfigPath $CursorPath
+Configure-MCPServer -ConfigPath "$env:USERPROFILE\.gemini\antigravity\mcp_config.json"
 
 Write-Host "ASDP installed successfully!" -ForegroundColor Green
 Write-Host "Run 'asdp' to start."
@@ -154,7 +155,7 @@ if ($choice -eq "y") {
     # Copy from global core/agent if it exists
     $SrcAgent = "$env:USERPROFILE\.asdp\core\agent"
     if (Test-Path $SrcAgent) {
-        Copy-Item -Path "$SrcAgent\*" -Destination $AgentDir -Recurive -Force
+        Copy-Item -Path "$SrcAgent\*" -Destination $AgentDir -Recursive -Force
         Write-Host "Project initialized successfully in $AgentDir" -ForegroundColor Green
     } else {
         Write-Host "Warning: Global agent templates not found at $SrcAgent" -ForegroundColor Yellow

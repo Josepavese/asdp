@@ -189,6 +189,8 @@ configure_mcp_server "$HOME/Library/Application Support/Claude/claude_desktop_co
 configure_mcp_server "$HOME/.config/Cursor/User/globalStorage/mcp-servers.json"
 # Cursor (macOS)
 configure_mcp_server "$HOME/Library/Application Support/Cursor/User/globalStorage/mcp-servers.json"
+# Antigravity (Common)
+configure_mcp_server "$HOME/.gemini/antigravity/mcp_config.json"
 
 echo -e "${GREEN}ASDP installed successfully!${NC}"
 echo "Run 'asdp' to start."
