@@ -230,10 +230,7 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		path, _ := callParams.Arguments["path"].(string)
 		ctx, err := s.queryUC.Execute(path)
 		if err != nil {
-			return &CallToolResult{
-				IsError: true,
-				Content: []ToolContent{{Type: "text", Text: err.Error()}},
-			}, nil
+			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
 		jsonBytes, _ := json.MarshalIndent(ctx, "", "  ")
 		return &CallToolResult{
@@ -244,10 +241,7 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		path, _ := callParams.Arguments["path"].(string)
 		res, err := s.syncUC.Execute(path)
 		if err != nil {
-			return &CallToolResult{
-				IsError: true,
-				Content: []ToolContent{{Type: "text", Text: err.Error()}},
-			}, nil
+			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
 		jsonBytes, _ := json.MarshalIndent(res, "", "  ")
 		return &CallToolResult{
@@ -258,10 +252,7 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		path, _ := callParams.Arguments["path"].(string)
 		res, err := s.syncTreeUC.Execute(path)
 		if err != nil {
-			return &CallToolResult{
-				IsError: true,
-				Content: []ToolContent{{Type: "text", Text: err.Error()}},
-			}, nil
+			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
 		jsonBytes, _ := json.MarshalIndent(res, "", "  ")
 		return &CallToolResult{
@@ -284,7 +275,7 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 			Path: path,
 		})
 		if err != nil {
-			return &CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}, nil
+			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
 		return &CallToolResult{Content: []ToolContent{{Type: "text", Text: resultMsg}}}, nil
 
@@ -292,7 +283,7 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		path, _ := callParams.Arguments["path"].(string)
 		resultMsg, err := s.initAgentUC.Execute(path)
 		if err != nil {
-			return &CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}, nil
+			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
 		return &CallToolResult{Content: []ToolContent{{Type: "text", Text: resultMsg}}}, nil
 
@@ -301,7 +292,7 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		codePath, _ := callParams.Arguments["code_path"].(string)
 		resultMsg, err := s.initProjectUC.Execute(path, codePath)
 		if err != nil {
-			return &CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}, nil
+			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
 		return &CallToolResult{Content: []ToolContent{{Type: "text", Text: resultMsg}}}, nil
 

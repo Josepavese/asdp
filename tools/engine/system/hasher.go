@@ -41,18 +41,30 @@ func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 		return false
 	}
 
-	// 1. Read just the root directory (NON-RECURSIVE)
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return "", fmt.Errorf("failed to read directory %s: %w", root, err)
-	}
+	// 1. Walk directory RECURSIVELY (Boundary-Aware)
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 
-	for _, entry := range entries {
-		name := entry.Name()
-		path := filepath.Join(root, name)
-
-		if entry.IsDir() {
-			continue // Skip subdirectories
+		name := d.Name()
+		if d.IsDir() {
+			if path == root {
+				return nil
+			}
+			// Skip ignored directories
+			if isIgnored(name) {
+				return filepath.SkipDir
+			}
+			// Boundary Check: If this directory is a separate ASDP module, skip it.
+			// We check for codespec.md or codemodel.md
+			if _, err := os.Stat(filepath.Join(path, "codespec.md")); err == nil {
+				return filepath.SkipDir
+			}
+			if _, err := os.Stat(filepath.Join(path, "codemodel.md")); err == nil {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 
 		// Filtering rules for files:
@@ -60,19 +72,20 @@ func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 			strings.HasPrefix(name, ".") ||
 			strings.HasSuffix(name, ".md") ||
 			strings.HasSuffix(name, "_test.go") {
-			continue
+			return nil
 		}
 
-		// Extra safety: Check if it's a regular file (following symlinks if any)
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
-		}
-		if !info.Mode().IsRegular() {
-			continue
+		// Extra safety check for regular files
+		info, err := d.Info()
+		if err != nil || !info.Mode().IsRegular() {
+			return nil
 		}
 
 		files = append(files, path)
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to walk directory %s: %w", root, err)
 	}
 
 	// 2. Sort files to ensure deterministic order

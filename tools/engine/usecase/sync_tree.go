@@ -89,6 +89,11 @@ func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*dom
 				comp.Description = spec.MetaData.Summary
 			}
 		}
+	} else {
+		// Fallback description if no spec found
+		if comp.Description == "" {
+			comp.Description = "(No specification found)"
+		}
 	}
 
 	if _, err := uc.fs.Stat(filepath.Join(currentPath, "codemodel.md")); err == nil {

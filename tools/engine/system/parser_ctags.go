@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/Josepavese/asdp/engine/domain"
@@ -42,18 +44,95 @@ func (p *CtagsParser) ParseDir(root string) ([]domain.Symbol, error) {
 		return nil, fmt.Errorf("ctags binary not found: %w", err)
 	}
 
-	// Run ctags (NON-RECURSIVE)
-	// --output-format=json : standardized JSON output
-	// --fields=+nKe : line number, kind, end line
-	// --exclude=*.go : let GoASTParser handle Go files
-	cmd := exec.Command(p.BinaryPath, "--output-format=json", "--fields=+nKe", "--exclude=*.go", root)
+	// 1. Collect files RECURSIVELY (Boundary-Aware)
+	var filesToScan []string
 
-	// We capture stdout
+	ignoredPatterns := []string{
+		"node_modules", "vendor", "packages", "bower_components",
+		"venv", ".venv", "anaconda", "conda", "env", ".env",
+		"bin", "obj", "dist", "target", "build", "out",
+		".vscode", ".idea", ".git", ".hg", ".svn", ".cache",
+	}
+
+	isIgnored := func(name string) bool {
+		name = strings.ToLower(name)
+		for _, p := range ignoredPatterns {
+			if strings.Contains(name, p) {
+				return true
+			}
+		}
+		return false
+	}
+
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if path == root {
+				return nil
+			}
+			if isIgnored(d.Name()) {
+				return filepath.SkipDir
+			}
+			// Boundary Check
+			if _, err := os.Stat(filepath.Join(path, "codespec.md")); err == nil {
+				return filepath.SkipDir
+			}
+			if _, err := os.Stat(filepath.Join(path, "codemodel.md")); err == nil {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// Skip Go files (handled by GoASTParser) and others
+		if strings.HasSuffix(d.Name(), ".go") || strings.HasSuffix(d.Name(), ".md") {
+			return nil
+		}
+
+		info, err := d.Info()
+		if err == nil && info.Mode().IsRegular() {
+			filesToScan = append(filesToScan, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk dir: %w", err)
+	}
+
+	if len(filesToScan) == 0 {
+		return []domain.Symbol{}, nil
+	}
+
+	// 2. Run ctags with file list input
+	// -L - : read file list from stdin
+	cmd := exec.Command(p.BinaryPath, "--output-format=json", "--fields=+nKe", "--exclude=*.go", "-L", "-")
+
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	// We ignore stderr for now or log it
 
-	if err := cmd.Run(); err != nil {
+	// Create stdin pipe
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("ctags start failed: %w", err)
+	}
+
+	// Write files to stdin
+	go func() {
+		defer stdin.Close()
+		for _, f := range filesToScan {
+			fmt.Fprintln(stdin, f)
+		}
+	}()
+
+	if err := cmd.Wait(); err != nil {
+		// Verify if it's an exit code issue or IO
+		// ctags might exit with non-zero if warnings?
+		// For now simple error return
 		return nil, fmt.Errorf("ctags execution failed: %w", err)
 	}
 
