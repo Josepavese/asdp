@@ -12,6 +12,12 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# Authentication for private repos
+AUTH_HEADER=()
+if [ -n "$GITHUB_TOKEN" ]; then
+    AUTH_HEADER=(-H "Authorization: token $GITHUB_TOKEN")
+fi
+
 echo -e "${GREEN}Starting ASDP Installer...${NC}"
 
 # 1. Detect OS and Arch
@@ -76,29 +82,29 @@ CORE_URL="https://github.com/${REPO}/releases/latest/download/asdp-core.zip"
 
 echo "Fetching Binary from: $DOWNLOAD_URL"
 # Use -L to follow redirects and -f to fail on 404
-if curl -L -f -o "${INSTALL_DIR}/${APP_NAME}.zst" "$DOWNLOAD_URL"; then
+if curl "${AUTH_HEADER[@]}" -L -f -o "${INSTALL_DIR}/${APP_NAME}.zst" "$DOWNLOAD_URL"; then
     echo -e "${GREEN}Binary download successful.${NC}"
     echo "Decompressing binary..."
     zstd -d --rm "${INSTALL_DIR}/${APP_NAME}.zst" -o "${INSTALL_DIR}/${APP_NAME}"
 else
     echo -e "${RED}Binary download failed (404 Not Found).${NC}"
     echo -e "${YELLOW}Note: If the repository is private, ensure you are authenticated.${NC}"
-    echo -e "Tip: Use 'gh release download --repo ${REPO} -p \"*${PLATFORM}-${BINARY_ARCH}*\"' if curl fails."
+    echo -e "Tip: Try setting the token: ${GREEN}GITHUB_TOKEN=your_token ./install.sh${NC}"
     exit 1
 fi
 chmod +x "${INSTALL_DIR}/${APP_NAME}"
 
 echo "Fetching Core Assets from: $CORE_URL"
 # Use temp file for zip
-if curl -L -f -o "/tmp/asdp-core.zip" "$CORE_URL"; then
+if curl "${AUTH_HEADER[@]}" -L -f -o "/tmp/asdp-core.zip" "$CORE_URL"; then
     echo "Unzipping core assets..."
     # Unzip into ~/.asdp, overwrite existing
     unzip -o /tmp/asdp-core.zip -d "$HOME/.asdp/"
     rm /tmp/asdp-core.zip
     echo -e "${GREEN}Core assets installed.${NC}"
 else
-    echo -e "${YELLOW}Warning: Core assets download failed (or repository is private).${NC}"
-    echo -e "Try: 'gh release download --repo ${REPO} -p \"asdp-core.zip\"' manually."
+    echo -e "${YELLOW}Warning: Core assets download failed.${NC}"
+    echo -e "If this is a private repo, ensure GITHUB_TOKEN is set."
 fi
 
 # 5. Path Setup

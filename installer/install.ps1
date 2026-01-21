@@ -4,7 +4,13 @@ $ErrorActionPreference = "Stop"
 $AppName = "asdp"
 $Repo = "Josepavese/asdp"
 $InstallDir = "$env:USERPROFILE\.asdp\bin"
-$BinaryName = "asdp-windows-amd64.exe"
+$BinaryName = "asdp-windows-amd64.exe.zst"
+
+# Authentication for private repos
+$Headers = @{}
+if ($env:GITHUB_TOKEN) {
+    $Headers["Authorization"] = "token $env:GITHUB_TOKEN"
+}
 
 Write-Host "Starting ASDP Installer..." -ForegroundColor Green
 
@@ -15,13 +21,23 @@ if (!(Test-Path -Path $InstallDir)) {
 }
 
 # 2. Prerequisites
+$PrereqMissing = $false
 if (Get-Command "ctags" -ErrorAction SilentlyContinue) {
     Write-Host "Prerequisite 'ctags' found." -ForegroundColor Green
 } else {
     Write-Host "Warning: 'ctags' not found." -ForegroundColor Yellow
-    Write-Host "Please install Universal Ctags via Winget or Chocolatey:"
-    Write-Host "winget install UniversalCtags"
+    Write-Host "Please install Universal Ctags (e.g., 'winget install UniversalCtags')"
 }
+
+if (Get-Command "zstd" -ErrorAction SilentlyContinue) {
+    Write-Host "Prerequisite 'zstd' found." -ForegroundColor Green
+} else {
+    Write-Host "Error: 'zstd' not found. Required for decompressing the binary." -ForegroundColor Red
+    Write-Host "Please install zstd (e.g., 'winget install facebook.zstd')"
+    $PrereqMissing = $true
+}
+
+if ($PrereqMissing) { exit 1 }
 
 # 3. Download
 $DownloadUrl = "https://github.com/$Repo/releases/latest/download/$BinaryName"
@@ -32,16 +48,22 @@ $CoreFile = Join-Path $env:TEMP "asdp-core.zip"
 
 Write-Host "Downloading Binary from $DownloadUrl..."
 try {
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $OutputFile
+    Invoke-WebRequest -Uri $DownloadUrl -OutFile "$OutputFile.zst" -Headers $Headers
     Write-Host "Binary download successful." -ForegroundColor Green
+    Write-Host "Decompressing binary..."
+    & zstd -d --rm "$OutputFile.zst" -o "$OutputFile"
 } catch {
     Write-Host "Binary download failed: $_" -ForegroundColor Red
+    if ($_.Exception.Response.StatusCode -eq 404) {
+        Write-Host "Note: If the repository is private, ensure GITHUB_TOKEN is set." -ForegroundColor Yellow
+        Write-Host "Tip: Try: `$env:GITHUB_TOKEN='your_token'; .\installer\install.ps1`" -ForegroundColor Green
+    }
     exit 1
 }
 
 Write-Host "Downloading Core Assets from $CoreUrl..."
 try {
-    Invoke-WebRequest -Uri $CoreUrl -OutFile $CoreFile
+    Invoke-WebRequest -Uri $CoreUrl -OutFile $CoreFile -Headers $Headers
     Write-Host "Extracting core assets..."
     # Expand-Archive requires destination. We extract to parent of bin (.asdp)
     $BaseDir = "$env:USERPROFILE\.asdp"
@@ -50,6 +72,7 @@ try {
     Write-Host "Core assets installed." -ForegroundColor Green
 } catch {
     Write-Host "Core download failed (optional): $_" -ForegroundColor Yellow
+    Write-Host "If this is a private repo, ensure GITHUB_TOKEN is set."
 }
 
 # 4. Path Setup
