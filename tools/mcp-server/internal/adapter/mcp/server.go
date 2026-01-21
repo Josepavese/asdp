@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/Josepavese/asdp/engine/domain"
 	"github.com/Josepavese/asdp/engine/usecase"
 )
 
@@ -107,7 +108,7 @@ func (s *Server) handleInitialize(params json.RawMessage) (*InitializeResult, *R
 			Version string `json:"version"`
 		}{
 			Name:    "asdp-mcp-server",
-			Version: "0.1.9",
+			Version: domain.Version,
 		},
 	}, nil
 }

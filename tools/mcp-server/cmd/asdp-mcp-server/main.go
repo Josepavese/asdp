@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/Josepavese/asdp/engine/domain"
 	"github.com/Josepavese/asdp/engine/system"
 	"github.com/Josepavese/asdp/engine/usecase"
 	"github.com/Josepavese/asdp/internal/adapter/mcp"
@@ -42,7 +43,7 @@ func main() {
 	}
 
 	// Mode 2: MCP Server (Default)
-	fmt.Fprintf(os.Stderr, "ASDP MCP Server v0.1.9 started.\n")
+	fmt.Fprintf(os.Stderr, "ASDP MCP Server v%s started.\n", domain.Version)
 	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC)
 	mcpServer.Serve()
 }
