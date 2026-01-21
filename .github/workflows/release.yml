@@ -36,8 +36,18 @@ jobs:
           # Windows AMD64
           GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../../dist/asdp-windows-amd64.exe ./cmd/asdp-mcp-server/main.go
           
+          # Compress binaries with zstd
+          cd ../../dist
+          # Install zstd if not present (usually present on ubuntu-latest)
+          # Use -19 for high compression, --rm to remove original
+          for f in asdp-linux-amd64 asdp-linux-arm64 asdp-darwin-amd64 asdp-darwin-arm64 asdp-windows-amd64.exe; do
+            if [ -f "$f" ]; then
+              zstd -19 --rm "$f"
+            fi
+          done
+          cd ..
+
           # Core Assets (Protocol, Rules)
-          cd ../..
           zip -r dist/asdp-core.zip core/
 
       - name: Generate Checksums

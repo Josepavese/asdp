@@ -14,9 +14,23 @@ ASDP is a protocol designed to bridge the gap between AI Agents and Codebases. I
   - **`mcp-server/`**: The MCP server that exposes ASDP capabilities.
 - **`installer/`**: Cross-platform installation scripts.
 
-## Installation
+You can install the ASDP CLIs using the provided scripts.
 
-You can install the ASDP CLis using the provided scripts:
+> [!NOTE]
+> **Private Repository Note**: Since this repository is private, `curl` commands might fail with a 404 unless authenticated.
+> We recommend using the **GitHub CLI (`gh`)** for a zero-friction installation.
+
+### Method 1: GitHub CLI (Recommended)
+
+```bash
+# Clone the repository
+gh repo clone Josepavese/asdp
+cd asdp
+# Run the installer
+./installer/install.sh
+```
+
+### Method 2: Manual Script Execution
 
 **Linux/macOS**:
 

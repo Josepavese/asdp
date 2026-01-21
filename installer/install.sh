@@ -37,24 +37,32 @@ else
     exit 1
 fi
 
-BINARY_NAME="asdp-${PLATFORM}-${BINARY_ARCH}"
+BINARY_NAME="asdp-${PLATFORM}-${BINARY_ARCH}.zst"
 echo "Detected: ${PLATFORM} / ${BINARY_ARCH}"
 
-# 2. Check Prerequisites (Universal Ctags)
+# 2. Check Prerequisites (Universal Ctags & zstd)
 echo "Checking prerequisites..."
+PREREQ_MISSING=0
 if ! command -v ctags &> /dev/null; then
     echo -e "${YELLOW}Warning: 'ctags' not found.${NC}"
     echo "ASDP requires 'universal-ctags' for multi-language support."
-    
-    # Simple auto-install attempt or prompt
+    PREREQ_MISSING=1
+fi
+
+if ! command -v zstd &> /dev/null; then
+    echo -e "${YELLOW}Warning: 'zstd' not found.${NC}"
+    echo "Required for decompressing the asdp binary."
+    PREREQ_MISSING=1
+fi
+
+if [ $PREREQ_MISSING -eq 1 ]; then
     if [ "$OS" == "linux" ]; then
-       echo "Please run: sudo apt-get install universal-ctags"
+       echo -e "Please run: ${GREEN}sudo apt-get install universal-ctags zstd${NC}"
     elif [ "$OS" == "darwin" ]; then
-       echo "Please run: brew install universal-ctags"
+       echo -e "Please run: ${GREEN}brew install universal-ctags zstd${NC}"
     fi
-    # We do not exit 1, we allow installation without parsers
-else
-    echo -e "${GREEN}Prerequisite 'ctags' found.${NC}"
+    # If zstd is missing, we must exit
+    if ! command -v zstd &> /dev/null; then exit 1; fi
 fi
 
 # 3. Create Directories
@@ -67,10 +75,15 @@ DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${BINARY_NAME}
 CORE_URL="https://github.com/${REPO}/releases/latest/download/asdp-core.zip"
 
 echo "Fetching Binary from: $DOWNLOAD_URL"
-if curl -L -f -o "${INSTALL_DIR}/${APP_NAME}" "$DOWNLOAD_URL"; then
+# Use -L to follow redirects and -f to fail on 404
+if curl -L -f -o "${INSTALL_DIR}/${APP_NAME}.zst" "$DOWNLOAD_URL"; then
     echo -e "${GREEN}Binary download successful.${NC}"
+    echo "Decompressing binary..."
+    zstd -d --rm "${INSTALL_DIR}/${APP_NAME}.zst" -o "${INSTALL_DIR}/${APP_NAME}"
 else
-    echo -e "${RED}Binary download failed.${NC}"
+    echo -e "${RED}Binary download failed (404 Not Found).${NC}"
+    echo -e "${YELLOW}Note: If the repository is private, ensure you are authenticated.${NC}"
+    echo -e "Tip: Use 'gh release download --repo ${REPO} -p \"*${PLATFORM}-${BINARY_ARCH}*\"' if curl fails."
     exit 1
 fi
 chmod +x "${INSTALL_DIR}/${APP_NAME}"
@@ -84,7 +97,8 @@ if curl -L -f -o "/tmp/asdp-core.zip" "$CORE_URL"; then
     rm /tmp/asdp-core.zip
     echo -e "${GREEN}Core assets installed.${NC}"
 else
-    echo -e "${YELLOW}Warning: Core assets download failed.${NC}"
+    echo -e "${YELLOW}Warning: Core assets download failed (or repository is private).${NC}"
+    echo -e "Try: 'gh release download --repo ${REPO} -p \"asdp-core.zip\"' manually."
 fi
 
 # 5. Path Setup
