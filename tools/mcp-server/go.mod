@@ -1,6 +1,6 @@
 module github.com/Josepavese/asdp
 
-go 1.25.5
+go 1.23
 
 require github.com/Josepavese/asdp/engine v0.0.0
 

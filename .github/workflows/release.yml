@@ -24,18 +24,20 @@ jobs:
       - name: Build Binaries
         run: |
           mkdir -p dist
+          cd tools/mcp-server
           # Linux AMD64
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/asdp-linux-amd64 ./tools/mcp-server/cmd/asdp-mcp-server/main.go
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../../dist/asdp-linux-amd64 ./cmd/asdp-mcp-server/main.go
           # Linux ARM64
-          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/asdp-linux-arm64 ./tools/mcp-server/cmd/asdp-mcp-server/main.go
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o ../../dist/asdp-linux-arm64 ./cmd/asdp-mcp-server/main.go
           # macOS AMD64 (Intel)
-          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/asdp-darwin-amd64 ./tools/mcp-server/cmd/asdp-mcp-server/main.go
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../../dist/asdp-darwin-amd64 ./cmd/asdp-mcp-server/main.go
           # macOS ARM64 (Apple Silicon)
-          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/asdp-darwin-arm64 ./tools/mcp-server/cmd/asdp-mcp-server/main.go
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../../dist/asdp-darwin-arm64 ./cmd/asdp-mcp-server/main.go
           # Windows AMD64
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/asdp-windows-amd64.exe ./tools/mcp-server/cmd/asdp-mcp-server/main.go
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../../dist/asdp-windows-amd64.exe ./cmd/asdp-mcp-server/main.go
           
           # Core Assets (Protocol, Rules)
+          cd ../..
           zip -r dist/asdp-core.zip core/
 
       - name: Generate Checksums
