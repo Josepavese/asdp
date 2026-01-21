@@ -107,7 +107,7 @@ func (s *Server) handleInitialize(params json.RawMessage) (*InitializeResult, *R
 			Version string `json:"version"`
 		}{
 			Name:    "asdp-mcp-server",
-			Version: "0.1.6",
+			Version: "0.1.7",
 		},
 	}, nil
 }
@@ -117,13 +117,13 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 		Tools: []ToolDefinition{
 			{
 				Name:        "asdp_query_context",
-				Description: "Retrieve the ASDP context (Spec, Model, Freshness) for a given path.",
+				Description: "Retrieve the ASDP context (Spec, Model, Freshness) for a given absolute path.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"path": map[string]interface{}{
 							"type":        "string",
-							"description": "Path to the module (default: .)",
+							"description": "ABSOLUTE path to the module (e.g. /home/user/project/module)",
 						},
 					},
 					"required": []string{"path"},
@@ -131,13 +131,13 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 			},
 			{
 				Name:        "asdp_sync_codemodel",
-				Description: "Automatically scans the source code and updates the codemodel.md file with fresh symbols and hash.",
+				Description: "Automatically scans the source code and updates the codemodel.md file. Requires an absolute path.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"path": map[string]interface{}{
 							"type":        "string",
-							"description": "Path to the module (default: .)",
+							"description": "ABSOLUTE path to the module (e.g. /home/user/project/module)",
 						},
 					},
 					"required": []string{"path"},
@@ -145,7 +145,7 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 			},
 			{
 				Name:        "asdp_scaffold",
-				Description: "Create a new ASDP-compliant module with codespec.md and codemodel.md.",
+				Description: "Create a new ASDP-compliant module. Specify the target parent directory as an absolute path.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
@@ -159,7 +159,7 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 						},
 						"path": map[string]interface{}{
 							"type":        "string",
-							"description": "Parent directory for the new module. Default: .",
+							"description": "ABSOLUTE parent directory for the new module. Default: current directory",
 						},
 					},
 					"required": []string{"name"},
@@ -167,13 +167,13 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 			},
 			{
 				Name:        "asdp_init_agent",
-				Description: "Copies ASDP Agent rules, skills, and workflows from global storage into the local project (.agent folder).",
+				Description: "Copies ASDP Agent assets into the local project. Specify the project root as an absolute path.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"path": map[string]interface{}{
 							"type":        "string",
-							"description": "Project root path. Default: .",
+							"description": "ABSOLUTE project root path (e.g. /home/user/project)",
 						},
 					},
 				},
