@@ -88,6 +88,7 @@ func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*dom
 
 	// Strategy: Use Walk but return SkipDir for all subdirectories.
 	var children []domain.Component
+	var err error
 
 	// We can't easily use Walk to just list children without hacky logic.
 	// I will read directories directly using `os` for now, assuming local FS.

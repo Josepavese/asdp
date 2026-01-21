@@ -2,7 +2,7 @@
 
 ASDP is a protocol designed to bridge the gap between AI Agents and Codebases. It enforces a documentation-first workflow where "The Spec is the Truth."
 
-> **Status**: Core Implementation Complete (v0.1.0)
+> **Status**: Core Implementation Complete (v0.1.13)
 
 ## Project Structure
 
@@ -46,7 +46,8 @@ The `asdp` binary (MCP Server) provides the following tools:
 
 1. **`asdp_query_context`**: Reads `codespec.md` and `codemodel.md`, verifying their freshness.
 2. **`asdp_sync_codemodel`**: Automatically parses source code (Go + Polyglot Ctags) and updates `codemodel.md`.
-3. **`asdp_scaffold`**: Creates new ASDP-compliant modules with standard templates.
+3. **`asdp_sync_codetree`**: Automatically scans the project structure and generates/updates `codetree.md`.
+4. **`asdp_scaffold`**: Creates new ASDP-compliant modules with standard templates.
 
 ## Contributing
 

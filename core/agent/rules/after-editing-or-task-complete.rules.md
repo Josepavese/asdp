@@ -8,6 +8,7 @@ These steps MUST ALWAYS be followed at task end.
 1. Update `codemodel.md` (symbols/hash) for modified folders.
     > **Tool**: `asdp_sync_codemodel` (parses code -> updates doc).
 2. If the folder structure changed (files added/removed/renamed), update `codespec.md` and parent `codetree.md`. and also follow `WHEN_CREATING_A_FOLDER` or `WHEN_DELETING_A_FOLDER` as applicable.
+    > **Tool**: `asdp_sync_codetree` (updates `codetree.md`).
 
 - If functions/classes/structures changed (add/remove/rename/signature-change), update the relevant `codemodel.md`.
 - A task is NOT complete until all documentation is fully aligned and consistent.

@@ -11,5 +11,6 @@ description: Verify ASDP compliance and rebuild missing CodeTree/CodeSpec/CodeMo
    - Create/update that folder’s `codemodel.md` (real elements only).
      > **Tool**: `asdp_sync_codemodel`.
    - If folder structure changed, update root `codetree.md`.
+     > **Tool**: `asdp_sync_codetree` (scans project -> updates tree).
 6. After traversal, review all generated docs together for coherence; ensure code/structure and docs match exactly.
 7. Append `YYYY-MM-DD – agent – change` changelog entries in every updated document.
