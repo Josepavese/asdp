@@ -83,16 +83,17 @@ func (uc *ScaffoldUseCase) Execute(params ScaffoldParams) (string, error) {
 
 	// 3. Generate Content
 	specContent, err := renderTemplate(codeSpecTemplate, map[string]interface{}{
-		"ID":   fmt.Sprintf("%s-%d", moduleName, time.Now().Unix()), // Simple ID generation
-		"Name": moduleName,
-		"Type": params.Type,
+		"Name":        moduleName,
+		"Type":        params.Type,
+		"ASDPVersion": domain.Version,
 	})
 	if err != nil {
 		return "", err
 	}
 
 	modelContent, err := renderTemplate(codeModelTemplate, map[string]interface{}{
-		"CheckedAt": time.Now().Format(time.RFC3339),
+		"CheckedAt":   time.Now().Format(time.RFC3339),
+		"ASDPVersion": domain.Version,
 	})
 	if err != nil {
 		return "", err
