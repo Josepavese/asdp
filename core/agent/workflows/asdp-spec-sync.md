@@ -9,6 +9,7 @@ description: Verify ASDP compliance and rebuild missing CodeTree/CodeSpec/CodeMo
    - Read parent `codespec.md` and `codemodel.md` to understand intent/scope.
    - Create/update that folder’s `codespec.md` per `~/.asdp/core/spec/codespec.md`, reflecting actual role and boundaries only.
    - Create/update that folder’s `codemodel.md` per `~/.asdp/core/spec/codemodel.md`, listing real elements only (no invention).
+     > **Tip**: Use `asdp_sync_codemodel` to automatically generate the symbol list and source hash for this step.
    - If folder structure changed, update root `codetree.md`.
 6. After traversal, review all generated docs together for coherence; ensure code/structure and docs match exactly.
 7. Append `YYYY-MM-DD – agent – change` changelog entries in every updated document.
