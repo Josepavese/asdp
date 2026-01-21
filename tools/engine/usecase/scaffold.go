@@ -59,36 +59,32 @@ func NewScaffoldUseCase(fs domain.FileSystem) *ScaffoldUseCase {
 }
 
 func (uc *ScaffoldUseCase) Execute(params ScaffoldParams) (string, error) {
-	// 1. Resolve Target Directory
-	if params.Path == "" {
-		params.Path = "."
+	absPath, err := validateAndExpandPath(params.Path)
+	if err != nil {
+		return "", err
 	}
-	targetDir := filepath.Join(params.Path, params.Name)
+	params.Path = absPath
+
+	targetDir := params.Path
+	moduleName := params.Name
+
+	if params.Name == "." || params.Name == "" {
+		targetDir = params.Path
+		moduleName = filepath.Base(params.Path)
+	} else {
+		targetDir = filepath.Join(params.Path, params.Name)
+	}
 
 	// 2. Create Directory
-	// We check if it exists by trying to Stat.
-	// Actually, MkdirAll is idempotent usually, but let's check to allow "clean" start assurance?
-	// For robust idempotency as requested, checking first is good, but overwriting files might be bad.
-	// The user rule said "non cancella quello che l'utente ha già creato".
-	// So we should fail if files exist? Or skip?
-	// Let's check dir existence first.
-	if _, err := uc.fs.Stat(targetDir); err == nil {
-		// Directory exists. We proceed but check files individually before overwriting?
-		// For now, let's allow scaffolding into existing dir but NOT overwrite existing ASDP files.
-	} else {
-		// Create dir (FileSystem interface needs MkdirAll? RealFileSystem has manual impl or we add it)
-		// Our domain.FileSystem only has WriteFile.
-		// We might need to extend FileSystem interface or handle mkdir in WriteFile implication?
-		// Usually WriteFile in simple FS implies creating dir.
-		// Let's assume WriteFile creates dirs or we need to expand FS capability.
-		// Checking fs.go: RealFileSystem.WriteFile uses ioutil.WriteFile. It does NOT create dirs.
-		// We need to upgrade FS interface.
+	if err := uc.fs.MkdirAll(targetDir); err != nil {
+		// Even if it exists, we try to ensure it's there.
+		// If FileSystem doesn't support it, we might skip it.
 	}
 
 	// 3. Generate Content
 	specContent, err := renderTemplate(codeSpecTemplate, map[string]interface{}{
-		"ID":   fmt.Sprintf("%s-%d", params.Name, time.Now().Unix()), // Simple ID generation
-		"Name": params.Name,
+		"ID":   fmt.Sprintf("%s-%d", moduleName, time.Now().Unix()), // Simple ID generation
+		"Name": moduleName,
 		"Type": params.Type,
 	})
 	if err != nil {
@@ -111,10 +107,6 @@ func (uc *ScaffoldUseCase) Execute(params ScaffoldParams) (string, error) {
 	created := []string{}
 	skipped := []string{}
 
-	// We'll need a way to ensure dir exists.
-	// IMPORTANT: I need to check `tools/engine/system/fs.go` to see if I need to add MkdirAll.
-	// Assuming I need to add it to the interface.
-
 	for filename, content := range files {
 		filePath := filepath.Join(targetDir, filename)
 		if _, err := uc.fs.Stat(filePath); err == nil {
@@ -129,7 +121,7 @@ func (uc *ScaffoldUseCase) Execute(params ScaffoldParams) (string, error) {
 		created = append(created, filename)
 	}
 
-	return fmt.Sprintf("Scaffolded %s in %s. Created: %v, Skipped: %v", params.Name, targetDir, created, skipped), nil
+	return fmt.Sprintf("Scaffolded %s in %s. Created: %v, Skipped: %v", moduleName, targetDir, created, skipped), nil
 }
 
 func renderTemplate(tmplStr string, data interface{}) (string, error) {

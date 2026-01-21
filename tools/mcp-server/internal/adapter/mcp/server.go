@@ -107,7 +107,7 @@ func (s *Server) handleInitialize(params json.RawMessage) (*InitializeResult, *R
 			Version string `json:"version"`
 		}{
 			Name:    "asdp-mcp-server",
-			Version: "0.1.7",
+			Version: "0.1.8",
 		},
 	}, nil
 }
@@ -145,13 +145,13 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 			},
 			{
 				Name:        "asdp_scaffold",
-				Description: "Create a new ASDP-compliant module. Specify the target parent directory as an absolute path.",
+				Description: "Create a new ASDP-compliant module. Use name='.' to initialize the current directory (in-place).",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"name": map[string]interface{}{
 							"type":        "string",
-							"description": "The name of the module/directory.",
+							"description": "Module name. Use '.' to scaffold directly in the provided path.",
 						},
 						"type": map[string]interface{}{
 							"type":        "string",
@@ -159,10 +159,10 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 						},
 						"path": map[string]interface{}{
 							"type":        "string",
-							"description": "ABSOLUTE parent directory for the new module. Default: current directory",
+							"description": "ABSOLUTE parent directory (or target directory if name='.').",
 						},
 					},
-					"required": []string{"name"},
+					"required": []string{"name", "path"},
 				},
 			},
 			{

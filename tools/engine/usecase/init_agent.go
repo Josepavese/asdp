@@ -17,9 +17,11 @@ func NewInitAgentUseCase(fs domain.FileSystem) *InitAgentUseCase {
 }
 
 func (uc *InitAgentUseCase) Execute(projectPath string) (string, error) {
-	if projectPath == "" {
-		projectPath = "."
+	absPath, err := validateAndExpandPath(projectPath)
+	if err != nil {
+		return "", err
 	}
+	projectPath = absPath
 
 	// 1. Resolve source directory (~/.asdp/core/agent)
 	home, err := os.UserHomeDir()

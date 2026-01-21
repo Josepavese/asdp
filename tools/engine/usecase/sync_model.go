@@ -28,6 +28,12 @@ type SyncResult struct {
 }
 
 func (uc *SyncModelUseCase) Execute(path string) (*SyncResult, error) {
+	absPath, err := validateAndExpandPath(path)
+	if err != nil {
+		return nil, err
+	}
+	path = absPath
+
 	result := &SyncResult{Path: path}
 
 	// 1. Calculate current Hash

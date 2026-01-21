@@ -32,6 +32,12 @@ type FreshnessStatus struct {
 }
 
 func (uc *QueryContextUseCase) Execute(path string) (*ContextResponse, error) {
+	absPath, err := validateAndExpandPath(path)
+	if err != nil {
+		return nil, err
+	}
+	path = absPath
+
 	resp := &ContextResponse{
 		Path:      path,
 		Freshness: FreshnessStatus{Status: "unknown"},
