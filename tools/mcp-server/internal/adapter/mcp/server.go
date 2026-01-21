@@ -107,7 +107,7 @@ func (s *Server) handleInitialize(params json.RawMessage) (*InitializeResult, *R
 			Version string `json:"version"`
 		}{
 			Name:    "asdp-mcp-server",
-			Version: "0.1.8",
+			Version: "0.1.9",
 		},
 	}, nil
 }

@@ -41,12 +41,11 @@ func (p *CtagsParser) ParseDir(root string) ([]domain.Symbol, error) {
 		return nil, fmt.Errorf("ctags binary not found: %w", err)
 	}
 
-	// Run ctags recursively
+	// Run ctags (NON-RECURSIVE)
 	// --output-format=json : standardized JSON output
-	// -R : recursive
 	// --fields=+nK : line number, kind
 	// --exclude=*.go : let GoASTParser handle Go files
-	cmd := exec.Command(p.BinaryPath, "--output-format=json", "-R", "--fields=+nK", "--exclude=*.go", root)
+	cmd := exec.Command(p.BinaryPath, "--output-format=json", "--fields=+nK", "--exclude=*.go", root)
 
 	// We capture stdout
 	var out bytes.Buffer
