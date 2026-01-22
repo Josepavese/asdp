@@ -39,6 +39,10 @@ capabilities:
 
 # Dependencies (Logical, not just package imports)
 dependencies:
+  - module: "core/domain"
+    reason: "Uses domain types"
+  - module: "core/system"
+    reason: "Uses file system"
   - module: "pkg.logger"
     reason: "Logging failures"
 
