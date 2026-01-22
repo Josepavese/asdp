@@ -13,11 +13,44 @@ import (
 )
 
 type GoASTParser struct {
-	fs *RealFileSystem
+	fs     *RealFileSystem
+	config domain.Config
 }
 
-func NewGoASTParser() *GoASTParser {
-	return &GoASTParser{fs: NewRealFileSystem()}
+func NewGoASTParser(config domain.Config) *GoASTParser {
+	return &GoASTParser{
+		fs:     NewRealFileSystem(),
+		config: config,
+	}
+}
+
+func (p *GoASTParser) GetSymbolBody(root string, sym domain.Symbol) (string, error) {
+	if sym.FilePath == "" {
+		return "", fmt.Errorf("symbol has no file path")
+	}
+
+	fullPath := filepath.Join(root, sym.FilePath)
+	data, err := p.fs.ReadFile(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file %s: %w", fullPath, err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	if sym.Line <= 0 || sym.Line > len(lines) {
+		return "", fmt.Errorf("invalid start line %d", sym.Line)
+	}
+
+	end := sym.LineEnd
+	if end > len(lines) {
+		end = len(lines)
+	}
+
+	// Capture documentation if available (optional, but requested in idea)
+	// Actually, the idea says "l'intera funzione, i commenti ad essa associati".
+	// If sym.Line starts at the function signature, and docstring is separate metadata,
+	// we might want to include the docstring lines too if they are just above.
+	// But let's stick to the mapped lines for now.
+	return strings.Join(lines[sym.Line-1:end], "\n"), nil
 }
 
 func (p *GoASTParser) ParseDir(root string) ([]domain.Symbol, error) {
@@ -25,14 +58,9 @@ func (p *GoASTParser) ParseDir(root string) ([]domain.Symbol, error) {
 	fset := token.NewFileSet()
 
 	// 1. Walk RECURSIVELY (Boundary-Aware)
-	ignoredPatterns := []string{
-		"node_modules", "vendor", "dist", "build",
-		".vscode", ".idea", ".git", ".cache",
-	}
-
 	isIgnored := func(name string) bool {
 		name = strings.ToLower(name)
-		for _, p := range ignoredPatterns {
+		for _, p := range p.config.IgnorePatterns {
 			if strings.Contains(name, p) {
 				return true
 			}
@@ -61,7 +89,11 @@ func (p *GoASTParser) ParseDir(root string) ([]domain.Symbol, error) {
 			return nil
 		}
 
-		if !strings.HasSuffix(d.Name(), ".go") || strings.HasSuffix(d.Name(), "_test.go") {
+		if !strings.HasSuffix(d.Name(), ".go") {
+			return nil
+		}
+
+		if p.config.Parsing.Go.SkipTests && strings.HasSuffix(d.Name(), "_test.go") {
 			return nil
 		}
 
@@ -100,6 +132,8 @@ func (p *GoASTParser) ParseDir(root string) ([]domain.Symbol, error) {
 						}
 					}
 				}
+				relPath, _ := filepath.Rel(root, path)
+				sym.FilePath = relPath
 				symbols = append(symbols, sym)
 			}
 
@@ -125,6 +159,8 @@ func (p *GoASTParser) ParseDir(root string) ([]domain.Symbol, error) {
 						default:
 							sym.Kind = "type"
 						}
+						relPath, _ := filepath.Rel(root, path)
+						sym.FilePath = relPath
 						symbols = append(symbols, sym)
 					}
 				}

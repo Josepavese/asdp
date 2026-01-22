@@ -54,14 +54,15 @@ type Integrity struct {
 }
 
 type Symbol struct {
-	Name      string `yaml:"name"`
-	Kind      string `yaml:"kind"` // function, struct, class
-	Exported  bool   `yaml:"exported"`
-	Line      int    `yaml:"line"`
-	LineEnd   int    `yaml:"line_end"`
-	Signature string `yaml:"signature"`
-	Docstring string `yaml:"docstring,omitempty"`
-	Parent    string `yaml:"parent,omitempty"`
+	Name      string `yaml:"name" json:"name"`
+	Kind      string `yaml:"kind" json:"kind"` // function, struct, class
+	Exported  bool   `yaml:"exported" json:"exported"`
+	Line      int    `yaml:"line" json:"line"`
+	LineEnd   int    `yaml:"line_end" json:"line_end"`
+	FilePath  string `yaml:"file_path,omitempty" json:"file_path,omitempty"`
+	Signature string `yaml:"signature" json:"signature"`
+	Docstring string `yaml:"docstring,omitempty" json:"docstring,omitempty"`
+	Parent    string `yaml:"parent,omitempty" json:"parent,omitempty"`
 }
 
 // --- CodeTree (Hierarchy) ---

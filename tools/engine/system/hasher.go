@@ -9,19 +9,19 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/Josepavese/asdp/engine/domain"
 )
 
 type SHA256ContentHasher struct {
-	fs          *RealFileSystem
-	ignoreDirs  []string
-	ignoreFiles []string
+	fs     *RealFileSystem
+	config domain.HasherConfig
 }
 
-func NewSHA256ContentHasher(ignoreDirs, ignoreFiles []string) *SHA256ContentHasher {
+func NewSHA256ContentHasher(config domain.HasherConfig) *SHA256ContentHasher {
 	return &SHA256ContentHasher{
-		fs:          NewRealFileSystem(),
-		ignoreDirs:  ignoreDirs,
-		ignoreFiles: ignoreFiles,
+		fs:     NewRealFileSystem(),
+		config: config,
 	}
 }
 
@@ -32,7 +32,7 @@ func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 
 	isIgnored := func(name string) bool {
 		name = strings.ToLower(name)
-		for _, p := range h.ignoreDirs {
+		for _, p := range h.config.IgnoredDirs {
 			if strings.Contains(name, p) {
 				return true
 			}
@@ -42,9 +42,8 @@ func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 
 	isIgnoredFile := func(name string) bool {
 		name = strings.ToLower(name)
-		for _, p := range h.ignoreFiles {
+		for _, p := range h.config.IgnoredFiles {
 			// suffix matching for extensions, exact/pattern for others?
-			// Simplification: if pattern starts with *, suffix match.
 			if strings.HasPrefix(p, "*") {
 				if strings.HasSuffix(name, p[1:]) {
 					return true
@@ -52,7 +51,6 @@ func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 			} else if name == p {
 				return true
 			} else if strings.Contains(name, p) {
-				// Fallback to contains for safety if unsure of format
 				return true
 			}
 		}
@@ -86,8 +84,7 @@ func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 		}
 
 		// Filtering rules for files:
-		// Filtering rules for files:
-		if isIgnored(name) || isIgnoredFile(name) || strings.HasPrefix(name, ".") {
+		if isIgnored(name) || isIgnoredFile(name) || (h.config.ExcludeHidden && strings.HasPrefix(name, ".")) {
 			return nil
 		}
 

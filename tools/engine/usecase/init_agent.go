@@ -9,11 +9,12 @@ import (
 )
 
 type InitAgentUseCase struct {
-	fs domain.FileSystem
+	fs     domain.FileSystem
+	config domain.Config
 }
 
-func NewInitAgentUseCase(fs domain.FileSystem) *InitAgentUseCase {
-	return &InitAgentUseCase{fs: fs}
+func NewInitAgentUseCase(fs domain.FileSystem, config domain.Config) *InitAgentUseCase {
+	return &InitAgentUseCase{fs: fs, config: config}
 }
 
 func (uc *InitAgentUseCase) Execute(projectPath string) (string, error) {
@@ -23,20 +24,20 @@ func (uc *InitAgentUseCase) Execute(projectPath string) (string, error) {
 	}
 	projectPath = absPath
 
-	// 1. Resolve source directory (~/.asdp/core/agent)
+	// 1. Resolve source directory from Config
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
-	srcDir := filepath.Join(home, ".asdp", "core", "agent")
+	srcDir := filepath.Join(home, uc.config.System.GlobalAssetsDir)
 
 	// Verify source exists
 	if _, err := uc.fs.Stat(srcDir); err != nil {
 		return "", fmt.Errorf("global ASDP assets not found at %s. Please run the installer first", srcDir)
 	}
 
-	// 2. Resolve target directory (.agent)
-	targetDir := filepath.Join(projectPath, ".agent")
+	// 2. Resolve target directory from Config
+	targetDir := filepath.Join(projectPath, uc.config.System.DefaultAgentDir)
 
 	// 3. Walk and Copy
 	created := 0

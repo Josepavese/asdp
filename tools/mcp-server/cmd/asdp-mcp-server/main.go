@@ -29,14 +29,15 @@ func main() {
 	// Dependency Injection
 	fs := system.NewRealFileSystem()
 	configLoader := system.NewConfigurationLoader()
-	hasher := system.NewSHA256ContentHasher(cfg.IgnorePatterns, cfg.Validation.Freshness.IgnoredExtensions)
-	parser := system.NewPolyglotParser() // Switched to Polyglot
+	hasher := system.NewSHA256ContentHasher(cfg.Hasher)
+	parser := system.NewPolyglotParser(*cfg) // Switched to Polyglot
 
-	queryUC := usecase.NewQueryContextUseCase(fs, hasher)
+	queryUC := usecase.NewQueryContextUseCase(fs, hasher, *cfg)
 	syncUC := usecase.NewSyncModelUseCase(fs, parser, hasher, cfg.Sync.Model)
 	scaffoldUC := usecase.NewScaffoldUseCase(fs, cfg.Scaffold)
-	initAgentUC := usecase.NewInitAgentUseCase(fs)
-	syncTreeUC := usecase.NewSyncTreeUseCase(fs, cfg.Sync.Tree, cfg.IgnorePatterns)
+	initAgentUC := usecase.NewInitAgentUseCase(fs, *cfg)
+	syncTreeUC := usecase.NewSyncTreeUseCase(fs, cfg.Sync.Tree)
+	functionUC := usecase.NewGetFunctionInfoUseCase(fs, parser, hasher, *cfg)
 
 	// Mode 1: Query CLI (Testing)
 	if *queryPath != "" {
@@ -55,6 +56,6 @@ func main() {
 
 	// Mode 2: MCP Server (Default)
 	fmt.Fprintf(os.Stderr, "ASDP MCP Server v%s started.\n", domain.Version)
-	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC, initProjectUC, validateUC)
+	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC, initProjectUC, validateUC, functionUC, *cfg)
 	mcpServer.Serve()
 }

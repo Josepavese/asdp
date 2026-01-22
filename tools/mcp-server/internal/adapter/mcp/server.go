@@ -20,9 +20,11 @@ type Server struct {
 	syncTreeUC    *usecase.SyncTreeUseCase
 	initProjectUC *usecase.InitProjectUseCase
 	validateUC    *check.ValidateProjectUseCase
+	functionUC    *usecase.GetFunctionInfoUseCase
+	config        domain.Config
 }
 
-func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase, initProjectUC *usecase.InitProjectUseCase, validateUC *check.ValidateProjectUseCase) *Server {
+func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase, initProjectUC *usecase.InitProjectUseCase, validateUC *check.ValidateProjectUseCase, functionUC *usecase.GetFunctionInfoUseCase, config domain.Config) *Server {
 	return &Server{
 		queryUC:       queryUC,
 		syncUC:        syncUC,
@@ -31,6 +33,8 @@ func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUs
 		syncTreeUC:    syncTreeUC,
 		initProjectUC: initProjectUC,
 		validateUC:    validateUC,
+		functionUC:    functionUC,
+		config:        config,
 	}
 }
 
@@ -362,6 +366,18 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		return &CallToolResult{
 			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
 			IsError: !report.IsValid,
+		}, nil
+
+	case "asdp_function_info":
+		path, _ := callParams.Arguments["path"].(string)
+		symbol, _ := callParams.Arguments["symbol"].(string)
+		res, err := s.functionUC.Execute(path, symbol)
+		if err != nil {
+			return nil, &RpcError{Code: -32000, Message: err.Error()}
+		}
+		jsonBytes, _ := json.MarshalIndent(res, "", "  ")
+		return &CallToolResult{
+			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
 		}, nil
 
 	default:

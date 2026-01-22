@@ -20,7 +20,8 @@ type FileInfo interface {
 
 // Parser abstraction for AST operations
 type ASTParser interface {
-	ParseDir(path string) ([]Symbol, error)
+	ParseDir(root string) ([]Symbol, error)
+	GetSymbolBody(root string, symbol Symbol) (string, error)
 }
 
 // Hasher abstraction for integrity checks

@@ -13,16 +13,14 @@ import (
 )
 
 type SyncTreeUseCase struct {
-	fs           domain.FileSystem
-	config       domain.TreeSyncConfig
-	globalIgnore []string
+	fs     domain.FileSystem
+	config domain.TreeSyncConfig
 }
 
-func NewSyncTreeUseCase(fs domain.FileSystem, config domain.TreeSyncConfig, globalIgnore []string) *SyncTreeUseCase {
+func NewSyncTreeUseCase(fs domain.FileSystem, config domain.TreeSyncConfig) *SyncTreeUseCase {
 	return &SyncTreeUseCase{
-		fs:           fs,
-		config:       config,
-		globalIgnore: globalIgnore,
+		fs:     fs,
+		config: config,
 	}
 }
 
@@ -182,9 +180,7 @@ func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*dom
 }
 
 func (uc *SyncTreeUseCase) isIgnoredDir(name string) bool {
-	// Global ignores + Config specific ignores (if any)
-	// For now, simpler to just use global
-	for _, idx := range uc.globalIgnore {
+	for _, idx := range uc.config.IgnoredDirs {
 		if name == idx {
 			return true
 		}

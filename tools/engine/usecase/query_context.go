@@ -10,10 +10,11 @@ import (
 type QueryContextUseCase struct {
 	fs     domain.FileSystem
 	hasher domain.ContentHasher
+	config domain.Config
 }
 
-func NewQueryContextUseCase(fs domain.FileSystem, hasher domain.ContentHasher) *QueryContextUseCase {
-	return &QueryContextUseCase{fs: fs, hasher: hasher}
+func NewQueryContextUseCase(fs domain.FileSystem, hasher domain.ContentHasher, config domain.Config) *QueryContextUseCase {
+	return &QueryContextUseCase{fs: fs, hasher: hasher, config: config}
 }
 
 // ContextResponse moved to domain
@@ -67,7 +68,7 @@ func (uc *QueryContextUseCase) Execute(path string) (*domain.ContextResponse, er
 			resp.Freshness.CurrentHash = realHash
 			resp.Freshness.DocHash = docHash
 
-			if docHash == "PENDING_FIRST_SYNC" {
+			if docHash == uc.config.Sync.Model.FirstSyncHash {
 				resp.Freshness.Status = "stale"
 				resp.Freshness.Reason = "New module, never synced"
 			} else if docHash != realHash {

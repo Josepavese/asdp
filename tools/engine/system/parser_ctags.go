@@ -14,12 +14,11 @@ import (
 )
 
 type CtagsParser struct {
-	// Optional: path to ctags binary, defaults to "ctags"
-	BinaryPath string
+	config domain.Config
 }
 
-func NewCtagsParser() *CtagsParser {
-	return &CtagsParser{BinaryPath: "ctags"}
+func NewCtagsParser(config domain.Config) *CtagsParser {
+	return &CtagsParser{config: config}
 }
 
 // CtagsEntry matches the JSON output of `ctags --output-format=json`
@@ -35,29 +34,46 @@ type CtagsEntry struct {
 	Pattern   string `json:"pattern"`   // Regex pattern to find the line
 }
 
+func (p *CtagsParser) GetSymbolBody(root string, sym domain.Symbol) (string, error) {
+	if sym.FilePath == "" {
+		return "", fmt.Errorf("symbol has no file path")
+	}
+
+	fullPath := filepath.Join(root, sym.FilePath)
+	data, err := os.ReadFile(fullPath) // CtagsParser doesn't have p.fs yet, but we can use os
+	if err != nil {
+		return "", fmt.Errorf("failed to read file %s: %w", fullPath, err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	if sym.Line <= 0 || sym.Line > len(lines) {
+		return "", fmt.Errorf("invalid start line %d", sym.Line)
+	}
+
+	end := sym.LineEnd
+	if end <= 0 || end > len(lines) {
+		end = sym.Line // Fallback if end not provided
+	}
+
+	return strings.Join(lines[sym.Line-1:end], "\n"), nil
+}
+
 func (p *CtagsParser) ParseDir(root string) ([]domain.Symbol, error) {
 	// Check if ctags is available
-	if _, err := exec.LookPath(p.BinaryPath); err != nil {
-		// Log warning? For now just return empty, assuming optional.
-		// Alternatively, return error so the Polyglot knows it failed.
-		// Let's return a specific error that can be ignored.
+	if _, err := exec.LookPath(p.config.Parsing.Ctags.Binary); err != nil {
+		if p.config.Parsing.Ctags.AllowMissing {
+			return []domain.Symbol{}, nil
+		}
 		return nil, fmt.Errorf("ctags binary not found: %w", err)
 	}
 
 	// 1. Collect files RECURSIVELY (Boundary-Aware)
 	var filesToScan []string
 
-	ignoredPatterns := []string{
-		"node_modules", "vendor", "packages", "bower_components",
-		"venv", ".venv", "anaconda", "conda", "env", ".env",
-		"bin", "obj", "dist", "target", "build", "out",
-		".vscode", ".idea", ".git", ".hg", ".svn", ".cache",
-	}
-
 	isIgnored := func(name string) bool {
 		name = strings.ToLower(name)
-		for _, p := range ignoredPatterns {
-			if strings.Contains(name, p) {
+		for _, pattern := range p.config.IgnorePatterns {
+			if strings.Contains(name, pattern) {
 				return true
 			}
 		}
@@ -105,8 +121,13 @@ func (p *CtagsParser) ParseDir(root string) ([]domain.Symbol, error) {
 	}
 
 	// 2. Run ctags with file list input
-	// -L - : read file list from stdin
-	cmd := exec.Command(p.BinaryPath, "--output-format=json", "--fields=+nKe", "--exclude=*.go", "-L", "-")
+	args := []string{"--output-format=json", p.config.Parsing.Ctags.Fields}
+	for _, excl := range p.config.Parsing.Ctags.Excludes {
+		args = append(args, "--exclude="+excl)
+	}
+	args = append(args, "-L", "-")
+
+	cmd := exec.Command(p.config.Parsing.Ctags.Binary, args...)
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -161,7 +182,11 @@ func (p *CtagsParser) ParseDir(root string) ([]domain.Symbol, error) {
 			LineEnd:   entry.End,
 			Exported:  true,          // Assume exported by default for non-Go langs
 			Signature: entry.Pattern, // Use pattern as rough signature surrogate
+			FilePath:  "",            // Will populate below
 		}
+
+		relPath, _ := filepath.Rel(root, entry.Path)
+		sym.FilePath = relPath
 
 		// Improve signature if pattern is just a search regex
 		// Often pattern looks like: "/^func MyFunc() {$/"

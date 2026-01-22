@@ -1,6 +1,8 @@
 package system
 
 import (
+	"strings"
+
 	"github.com/Josepavese/asdp/engine/domain"
 )
 
@@ -22,13 +24,22 @@ import (
 type PolyglotParser struct {
 	goParser    *GoASTParser
 	ctagsParser *CtagsParser
+	config      domain.Config
 }
 
-func NewPolyglotParser() *PolyglotParser {
+func NewPolyglotParser(config domain.Config) *PolyglotParser {
 	return &PolyglotParser{
-		goParser:    NewGoASTParser(),
-		ctagsParser: NewCtagsParser(),
+		goParser:    NewGoASTParser(config),
+		ctagsParser: NewCtagsParser(config),
+		config:      config,
 	}
+}
+
+func (p *PolyglotParser) GetSymbolBody(root string, sym domain.Symbol) (string, error) {
+	if strings.HasSuffix(sym.FilePath, ".go") {
+		return p.goParser.GetSymbolBody(root, sym)
+	}
+	return p.ctagsParser.GetSymbolBody(root, sym)
 }
 
 func (p *PolyglotParser) ParseDir(root string) ([]domain.Symbol, error) {

@@ -146,7 +146,25 @@ func TestFunctionalSuite(t *testing.T) {
 
 		AssertFileExists(t, filepath.Join(projectDir, ".agent/rules/managing-asdp-modules.asdp.md"))
 		AssertFileExists(t, filepath.Join(projectDir, "codetree.md"))
-		// codemodel/codespec might be missing if scaffold failed internally due to missing Title/Summary
-		// InitProject currently doesn't pass them.
+	})
+
+	// SCENARIO 8: FUNCTION INFO
+	t.Run("Function Info", func(t *testing.T) {
+		moduleDir := filepath.Join(sandboxDir, "mymodule")
+		args := map[string]interface{}{
+			"path":   moduleDir,
+			"symbol": "foo",
+		}
+		result := srv.CallTool(t, "asdp_function_info", args)
+
+		content := result["content"].([]interface{})
+		jsonStr := content[0].(map[string]interface{})["text"].(string)
+
+		if !strings.Contains(jsonStr, "func foo() {}") {
+			t.Errorf("Expected function code, got: %s", jsonStr)
+		}
+		if !strings.Contains(jsonStr, "\"kind\": \"function\"") {
+			t.Errorf("Expected symbol metadata, got: %s", jsonStr)
+		}
 	})
 }
