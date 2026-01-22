@@ -85,7 +85,7 @@ echo "Fetching Binary from: $DOWNLOAD_URL"
 if curl "${AUTH_HEADER[@]}" -L -f -o "${INSTALL_DIR}/${APP_NAME}.zst" "$DOWNLOAD_URL"; then
     echo -e "${GREEN}Binary download successful.${NC}"
     echo "Decompressing binary..."
-    zstd -d --rm "${INSTALL_DIR}/${APP_NAME}.zst" -o "${INSTALL_DIR}/${APP_NAME}"
+    zstd -f -d --rm "${INSTALL_DIR}/${APP_NAME}.zst" -o "${INSTALL_DIR}/${APP_NAME}"
 else
     echo -e "${RED}Binary download failed (404 Not Found).${NC}"
     echo -e "${YELLOW}Note: If the repository is private, ensure you are authenticated.${NC}"
@@ -197,7 +197,7 @@ echo "Run 'asdp' to start."
 
 # 6. Interactive Project Initialization
 echo ""
-read -p "Do you want to initialize ASDP in the current directory? (y/N): " -n 1 -r
+read -p "Do you want to initialize ASDP in the current directory? (y/N): " -n 1 -r < /dev/tty
 echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     AGENT_DIR="./.agent"
