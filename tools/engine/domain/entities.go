@@ -11,6 +11,7 @@ type CodeSpec struct {
 
 type CodeSpecMeta struct {
 	ASDPVersion  string        `yaml:"asdp_version"`
+	LastModified time.Time     `yaml:"last_modified"`
 	ID           string        `yaml:"id"`
 	Type         string        `yaml:"type"` // library, app, service
 	Title        string        `yaml:"title"`
@@ -85,6 +86,7 @@ type Component struct {
 	LastModified time.Time   `yaml:"last_modified"`
 	HasSpec      bool        `yaml:"has_spec"`
 	HasModel     bool        `yaml:"has_model"`
+	IsValid      bool        `yaml:"is_valid"`
 	Children     []Component `yaml:"children,omitempty"`
 }
 

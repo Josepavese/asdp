@@ -12,11 +12,17 @@ import (
 )
 
 type SHA256ContentHasher struct {
-	fs *RealFileSystem
+	fs          *RealFileSystem
+	ignoreDirs  []string
+	ignoreFiles []string
 }
 
-func NewSHA256ContentHasher() *SHA256ContentHasher {
-	return &SHA256ContentHasher{fs: NewRealFileSystem()}
+func NewSHA256ContentHasher(ignoreDirs, ignoreFiles []string) *SHA256ContentHasher {
+	return &SHA256ContentHasher{
+		fs:          NewRealFileSystem(),
+		ignoreDirs:  ignoreDirs,
+		ignoreFiles: ignoreFiles,
+	}
 }
 
 // HashDir calculates a deterministic hash of the semantic content of a directory (Non-Recursive).
@@ -24,17 +30,29 @@ func NewSHA256ContentHasher() *SHA256ContentHasher {
 func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 	var files []string
 
-	ignoredPatterns := []string{
-		"node_modules", "vendor", "packages", "bower_components", // Dependencies
-		"venv", ".venv", "anaconda", "conda", "env", ".env", // Environments
-		"bin", "obj", "dist", "target", "build", "out", // Builds
-		".vscode", ".idea", ".git", ".hg", ".svn", ".cache", // IDE/System
-	}
-
 	isIgnored := func(name string) bool {
 		name = strings.ToLower(name)
-		for _, p := range ignoredPatterns {
+		for _, p := range h.ignoreDirs {
 			if strings.Contains(name, p) {
+				return true
+			}
+		}
+		return false
+	}
+
+	isIgnoredFile := func(name string) bool {
+		name = strings.ToLower(name)
+		for _, p := range h.ignoreFiles {
+			// suffix matching for extensions, exact/pattern for others?
+			// Simplification: if pattern starts with *, suffix match.
+			if strings.HasPrefix(p, "*") {
+				if strings.HasSuffix(name, p[1:]) {
+					return true
+				}
+			} else if name == p {
+				return true
+			} else if strings.Contains(name, p) {
+				// Fallback to contains for safety if unsure of format
 				return true
 			}
 		}
@@ -68,10 +86,8 @@ func (h *SHA256ContentHasher) HashDir(root string) (string, error) {
 		}
 
 		// Filtering rules for files:
-		if isIgnored(name) ||
-			strings.HasPrefix(name, ".") ||
-			strings.HasSuffix(name, ".md") ||
-			strings.HasSuffix(name, "_test.go") {
+		// Filtering rules for files:
+		if isIgnored(name) || isIgnoredFile(name) || strings.HasPrefix(name, ".") {
 			return nil
 		}
 

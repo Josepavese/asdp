@@ -1,5 +1,5 @@
 ---
-asdp_version: 0.1.16
+asdp_version: 1.0.0
 integrity:
     src_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
     algorithm: sha256

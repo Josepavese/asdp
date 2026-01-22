@@ -2,7 +2,7 @@
 
 ASDP is a protocol designed to bridge the gap between AI Agents and Codebases. It enforces a documentation-first workflow where "The Spec is the Truth."
 
-> **Status**: Core Implementation Complete (v0.1.13)
+> **Status**: Core Implementation Complete (v0.1.16)
 
 ## Project Structure
 

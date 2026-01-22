@@ -19,6 +19,18 @@ func (fs *RealFileSystem) ReadFile(path string) ([]byte, error) {
 	return ioutil.ReadFile(path)
 }
 
+func (fs *RealFileSystem) ReadDir(path string) ([]domain.FileInfo, error) {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+	var infos []domain.FileInfo
+	for _, f := range files {
+		infos = append(infos, &realFileInfo{info: f})
+	}
+	return infos, nil
+}
+
 func (fs *RealFileSystem) WriteFile(path string, data []byte) error {
 	// Ensure parent dir exists
 	dir := filepath.Dir(path)

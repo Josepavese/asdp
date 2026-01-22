@@ -11,6 +11,7 @@ import (
 	"github.com/Josepavese/asdp/engine/system"
 	"github.com/Josepavese/asdp/engine/usecase"
 	"github.com/Josepavese/asdp/internal/adapter/mcp"
+	"github.com/Josepavese/asdp/validate/check"
 )
 
 func main() {
@@ -18,16 +19,24 @@ func main() {
 	queryPath := flag.String("query", "", "Path to query context for (e.g. ./tools/mcp-server)")
 	flag.Parse()
 
+	// Load Configuration
+	cfg, err := system.LoadConfig("") // Load from default locations
+	if err != nil {
+		log.Printf("Warning: Failed to load config, using defaults: %v", err)
+		cfg = domain.DefaultConfig()
+	}
+
 	// Dependency Injection
 	fs := system.NewRealFileSystem()
-	hasher := system.NewSHA256ContentHasher()
+	configLoader := system.NewConfigurationLoader()
+	hasher := system.NewSHA256ContentHasher(cfg.IgnorePatterns, cfg.Validation.Freshness.IgnoredExtensions)
 	parser := system.NewPolyglotParser() // Switched to Polyglot
 
 	queryUC := usecase.NewQueryContextUseCase(fs, hasher)
-	syncUC := usecase.NewSyncModelUseCase(fs, parser, hasher)
-	scaffoldUC := usecase.NewScaffoldUseCase(fs)
+	syncUC := usecase.NewSyncModelUseCase(fs, parser, hasher, cfg.Sync.Model)
+	scaffoldUC := usecase.NewScaffoldUseCase(fs, cfg.Scaffold)
 	initAgentUC := usecase.NewInitAgentUseCase(fs)
-	syncTreeUC := usecase.NewSyncTreeUseCase(fs)
+	syncTreeUC := usecase.NewSyncTreeUseCase(fs, cfg.Sync.Tree, cfg.IgnorePatterns)
 
 	// Mode 1: Query CLI (Testing)
 	if *queryPath != "" {
@@ -42,9 +51,10 @@ func main() {
 	}
 
 	initProjectUC := usecase.NewInitProjectUseCase(initAgentUC, syncTreeUC, scaffoldUC)
+	validateUC := check.NewValidateProjectUseCase(fs, parser, hasher, configLoader, cfg)
 
 	// Mode 2: MCP Server (Default)
 	fmt.Fprintf(os.Stderr, "ASDP MCP Server v%s started.\n", domain.Version)
-	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC, initProjectUC)
+	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC, initProjectUC, validateUC)
 	mcpServer.Serve()
 }

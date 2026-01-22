@@ -8,6 +8,7 @@ type FileSystem interface {
 	WriteFile(path string, data []byte) error
 	MkdirAll(path string) error
 	Walk(root string, fn func(path string, isDir bool) error) error
+	ReadDir(path string) ([]FileInfo, error)
 	Stat(path string) (FileInfo, error)
 }
 

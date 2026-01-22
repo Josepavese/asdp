@@ -1,7 +1,6 @@
-.agen
+.agent
 improvements/
-# ignore all code*.md files inside tools
-# temporary build and test dirs
+tests
 sandbox
 dist/
 tools/**/codespec.md

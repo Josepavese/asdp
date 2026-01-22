@@ -18,7 +18,7 @@ The frontmatter MUST adhere to the following structure.
 ```yaml
 ---
 # ASDP Protocol Version
-asdp_version: "1.0.0"
+asdp_version: 1.0.0
 
 # Unique Identifier for this module (dot notation recommended)
 id: "pkg.network.http"

@@ -39,11 +39,8 @@ func (uc *QueryContextUseCase) Execute(path string) (*domain.ContextResponse, er
 			resp.Summary = spec.MetaData.Summary
 			resp.Spec.Body = ""
 
-			// --- Validate the Spec ---
-			validation := ValidateCodeSpec(spec)
-			if !validation.IsValid {
-				resp.Validation = validation
-			}
+			// Policy-based validation is now centralized in ValidateProjectUseCase
+			// We only do a basic structural check here if needed.
 		}
 	}
 

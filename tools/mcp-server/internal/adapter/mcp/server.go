@@ -9,6 +9,7 @@ import (
 
 	"github.com/Josepavese/asdp/engine/domain"
 	"github.com/Josepavese/asdp/engine/usecase"
+	"github.com/Josepavese/asdp/validate/check"
 )
 
 type Server struct {
@@ -18,9 +19,10 @@ type Server struct {
 	initAgentUC   *usecase.InitAgentUseCase
 	syncTreeUC    *usecase.SyncTreeUseCase
 	initProjectUC *usecase.InitProjectUseCase
+	validateUC    *check.ValidateProjectUseCase
 }
 
-func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase, initProjectUC *usecase.InitProjectUseCase) *Server {
+func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase, initProjectUC *usecase.InitProjectUseCase, validateUC *check.ValidateProjectUseCase) *Server {
 	return &Server{
 		queryUC:       queryUC,
 		syncUC:        syncUC,
@@ -28,6 +30,7 @@ func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUs
 		initAgentUC:   initAgentUC,
 		syncTreeUC:    syncTreeUC,
 		initProjectUC: initProjectUC,
+		validateUC:    validateUC,
 	}
 }
 
@@ -180,8 +183,20 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 							"type":        "string",
 							"description": "ABSOLUTE parent directory (or target directory if name='.').",
 						},
+						"title": map[string]interface{}{
+							"type":        "string",
+							"description": "Title of the module (e.g. 'User Authentication Service'). Required.",
+						},
+						"summary": map[string]interface{}{
+							"type":        "string",
+							"description": "Brief summary of the module's purpose. Required.",
+						},
+						"context": map[string]interface{}{
+							"type":        "string",
+							"description": "Detailed context and reasoning for this module. Required.",
+						},
 					},
-					"required": []string{"name", "path"},
+					"required": []string{"name", "path", "title", "summary", "context"},
 				},
 			},
 			{
@@ -215,6 +230,20 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 					"required": []string{"path", "code_path"},
 				},
 			},
+			{
+				Name:        "asdp_validate",
+				Description: "Audit the ASDP project state. Returns a report of Errors (invalid state, integration blocking) and Warnings (staleness). Checks for mandatory files, strict content compliance, and synchronization freshness.",
+				InputSchema: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "ABSOLUTE path to the project root.",
+						},
+					},
+					"required": []string{"path"},
+				},
+			},
 		},
 	}, nil
 }
@@ -235,6 +264,7 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		jsonBytes, _ := json.MarshalIndent(ctx, "", "  ")
 		return &CallToolResult{
 			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
+			IsError: ctx.Validation != nil && !ctx.Validation.IsValid,
 		}, nil
 
 	case "asdp_sync_codemodel":
@@ -254,15 +284,38 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		if err != nil {
 			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
+
+		// Recursive check for validation errors anywhere in the tree
+		hasAnyError := false
+		var checkErrors func(c []domain.Component)
+		checkErrors = func(comps []domain.Component) {
+			for _, c := range comps {
+				if !c.IsValid {
+					hasAnyError = true
+					return
+				}
+				checkErrors(c.Children)
+			}
+		}
+		if !res.MetaData.Root || res.MetaData.Components == nil {
+			// This part is tricky because the root itself might have a spec (not yet in TreeMeta)
+			// But SyncTree builds children.
+		}
+		checkErrors(res.MetaData.Components)
+
 		jsonBytes, _ := json.MarshalIndent(res, "", "  ")
 		return &CallToolResult{
 			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
+			IsError: hasAnyError,
 		}, nil
 
 	case "asdp_scaffold":
 		name, _ := callParams.Arguments["name"].(string)
 		modType, _ := callParams.Arguments["type"].(string)
 		path, _ := callParams.Arguments["path"].(string)
+		title, _ := callParams.Arguments["title"].(string)
+		summary, _ := callParams.Arguments["summary"].(string)
+		context, _ := callParams.Arguments["context"].(string)
 		if name == "" {
 			return nil, &RpcError{Code: -32602, Message: "Missing required argument: name"}
 		}
@@ -270,9 +323,12 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 			modType = "library"
 		}
 		resultMsg, err := s.scaffoldUC.Execute(usecase.ScaffoldParams{
-			Name: name,
-			Type: modType,
-			Path: path,
+			Name:    name,
+			Type:    modType,
+			Path:    path,
+			Title:   title,
+			Summary: summary,
+			Context: context,
 		})
 		if err != nil {
 			return nil, &RpcError{Code: -32000, Message: err.Error()}
@@ -295,6 +351,18 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
 		return &CallToolResult{Content: []ToolContent{{Type: "text", Text: resultMsg}}}, nil
+
+	case "asdp_validate":
+		path, _ := callParams.Arguments["path"].(string)
+		report, err := s.validateUC.Execute(path)
+		if err != nil {
+			return nil, &RpcError{Code: -32000, Message: err.Error()}
+		}
+		jsonBytes, _ := json.MarshalIndent(report, "", "  ")
+		return &CallToolResult{
+			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
+			IsError: !report.IsValid,
+		}, nil
 
 	default:
 		return nil, &RpcError{Code: -32601, Message: fmt.Sprintf("Tool not found: %s", callParams.Name)}
