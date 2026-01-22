@@ -1,7 +1,5 @@
 improvements/
 # ignore all code*.md files inside tools
-/tools/**/code*.md
-
 # temporary build and test dirs
 sandbox/
 dist/
