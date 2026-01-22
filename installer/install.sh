@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-APP_NAME="asdp"
+main() {
+    APP_NAME="asdp"
 INSTALL_BASE="$HOME/.asdp"
 INSTALL_DIR="$INSTALL_BASE/bin"
 REPO="Josepavese/asdp"
@@ -46,30 +47,49 @@ fi
 BINARY_NAME="asdp-${PLATFORM}-${BINARY_ARCH}.zst"
 echo "Detected: ${PLATFORM} / ${BINARY_ARCH}"
 
-# 2. Check Prerequisites (Universal Ctags & zstd)
-echo "Checking prerequisites..."
-PREREQ_MISSING=0
-if ! command -v ctags &> /dev/null; then
-    echo -e "${YELLOW}Warning: 'ctags' not found.${NC}"
-    echo "ASDP requires 'universal-ctags' for multi-language support."
-    PREREQ_MISSING=1
-fi
+# 2. Install Prerequisites (Universal Ctags, zstd, unzip, golang)
+echo "Ensuring prerequisites are installed..."
 
-if ! command -v zstd &> /dev/null; then
-    echo -e "${YELLOW}Warning: 'zstd' not found.${NC}"
-    echo "Required for decompressing the asdp binary."
-    PREREQ_MISSING=1
-fi
+install_missing() {
+    local PKGS=()
+    command -v ctags &> /dev/null || PKGS+=("universal-ctags")
+    command -v zstd &> /dev/null || PKGS+=("zstd")
+    command -v unzip &> /dev/null || PKGS+=("unzip")
+    command -v go &> /dev/null || PKGS+=("golang")
 
-if [ $PREREQ_MISSING -eq 1 ]; then
-    if [ "$OS" == "linux" ]; then
-       echo -e "Please run: ${GREEN}sudo apt-get install universal-ctags zstd${NC}"
-    elif [ "$OS" == "darwin" ]; then
-       echo -e "Please run: ${GREEN}brew install universal-ctags zstd${NC}"
+    if [ ${#PKGS[@]} -eq 0 ]; then
+        echo -e "${GREEN}All prerequisites found.${NC}"
+        return 0
     fi
-    # If zstd is missing, we must exit
-    if ! command -v zstd &> /dev/null; then exit 1; fi
-fi
+
+    echo -e "${YELLOW}Missing packages: ${PKGS[*]}${NC}"
+    if [ "$OS" == "linux" ]; then
+        if command -v apt-get &> /dev/null; then
+            echo "Installing via apt-get..."
+            sudo apt-get update && sudo apt-get install -y "${PKGS[@]}"
+        elif command -v dnf &> /dev/null; then
+            echo "Installing via dnf..."
+            sudo dnf install -y "${PKGS[@]}"
+        elif command -v pacman &> /dev/null; then
+            echo "Installing via pacman..."
+            sudo pacman -S --noconfirm "${PKGS[@]}"
+        else
+            echo -e "${RED}Error: Could not find a supported package manager (apt, dnf, pacman).${NC}"
+            echo -e "Please install manually: ${PKGS[*]}"
+            exit 1
+        fi
+    elif [ "$OS" == "darwin" ]; then
+        if command -v brew &> /dev/null; then
+            echo "Installing via Homebrew..."
+            brew install "${PKGS[@]}"
+        else
+            echo -e "${RED}Error: Homebrew not found.${NC}"
+            exit 1
+        fi
+    fi
+}
+
+install_missing
 
 # 3. Create Directories
 echo "Setting up directories..."
@@ -212,4 +232,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     else
         echo -e "${YELLOW}Warning: Global agent templates not found at $SRC_AGENT${NC}"
     fi
-fi
+    fi
+}
+
+main "$@"
