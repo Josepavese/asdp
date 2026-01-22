@@ -1,4 +1,4 @@
 package domain
 
 // Version is the single source of truth for the project version.
-const Version = "0.1.14"
+const Version = "0.1.15"
