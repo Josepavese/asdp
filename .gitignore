@@ -3,4 +3,6 @@ improvements/
 # temporary build and test dirs
 sandbox/
 dist/
+tools/**/codespec.md
+tools/**/codemodel.md
 

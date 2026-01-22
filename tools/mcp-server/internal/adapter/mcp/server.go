@@ -164,7 +164,7 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 			},
 			{
 				Name:        "asdp_scaffold",
-				Description: "Create a new ASDP-compliant module. Result: Returns a success message and creates the directory structure including initial codespec.md and codemodel.md files.",
+				Description: "Create a new ASDP-compliant module or backfill missing files (codespec/codemodel) in an existing one. Safe to run on existing directories; will not overwrite existing files. Result: Returns a success message.",
 				InputSchema: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{

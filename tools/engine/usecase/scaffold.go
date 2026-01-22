@@ -12,7 +12,7 @@ import (
 
 // Templates constants
 const codeSpecTemplate = `---
-asdp_version: "1.0.0"
+asdp_version: "{{.ASDPVersion}}"
 id: "{{.ID}}"
 type: "{{.Type}}"
 title: "{{.Name}}"
@@ -32,7 +32,7 @@ Describe the context and reasoning for this module here.
 `
 
 const codeModelTemplate = `---
-asdp_version: "1.0.0"
+asdp_version: "{{.ASDPVersion}}"
 integrity:
   src_hash: "PENDING_FIRST_SYNC"
   algorithm: "sha256"
