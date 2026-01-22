@@ -7,10 +7,51 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+func performBump(cfg *VersionConfig, path string) error {
+	// Parse current version
+	parts := strings.Split(cfg.KitVersion, ".")
+	if len(parts) != 3 {
+		return fmt.Errorf("invalid semantic version format: %s", cfg.KitVersion)
+	}
+
+	patch, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return fmt.Errorf("invalid patch version: %s", parts[2])
+	}
+
+	// Increment patch
+	newVersion := fmt.Sprintf("%s.%s.%d", parts[0], parts[1], patch+1)
+	fmt.Printf("Bumping version matching patch requirements: %s -> %s\n", cfg.KitVersion, newVersion)
+
+	// Update Struct
+	cfg.KitVersion = newVersion
+
+	// Write back to yaml
+	// We read the raw file again to replace just the version string to preserve comments
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	// Safe regex replacement for the YAML file
+	re := regexp.MustCompile(`kit_version:\s*"?[\d\.]+"?`)
+	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf("kit_version: %s", newVersion)))
+
+	if err := os.WriteFile(path, newContent, 0644); err != nil {
+		return err
+	}
+
+	fmt.Println("Updated version.yaml")
+
+	// Now sync
+	return performSync(cfg, false)
+}
 
 type VersionConfig struct {
 	KitVersion         string `yaml:"kit_version"`
@@ -37,14 +78,23 @@ func main() {
 
 	switch command {
 	case "sync":
-		if err := performSync(cfg); err != nil {
+		if err := performSync(cfg, false); err != nil {
 			fmt.Printf("Sync failed: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println("Sync completed successfully.")
 	case "check":
-		// Check would verify if files match config without changing them
-		fmt.Println("Check not implemented yet, running sync for now...")
+		if err := performSync(cfg, true); err != nil {
+			fmt.Printf("Check failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Check passed: All versions are in sync.")
+	case "bump":
+		if err := performBump(cfg, "version.yaml"); err != nil {
+			fmt.Printf("Bump failed: %v\n", err)
+			os.Exit(1)
+		}
+		// performBump handles the valid sync execution after updating the file
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		os.Exit(1)
@@ -63,23 +113,30 @@ func loadVersionConfig(path string) (*VersionConfig, error) {
 	return &cfg, nil
 }
 
-func performSync(cfg *VersionConfig) error {
+func performSync(cfg *VersionConfig, dryRun bool) error {
+	changesCount := 0
+
 	// 1. Update Go Constant (tools/engine/domain/version.go)
-	if err := updateGoVersion("tools/engine/domain/version.go", cfg.KitVersion); err != nil {
+	changed, err := updateGoVersion("tools/engine/domain/version.go", cfg.KitVersion, dryRun)
+	if err != nil {
 		return fmt.Errorf("failed to update domain/version.go: %w", err)
+	}
+	if changed {
+		changesCount++
 	}
 
 	// 2. Update Go Constant (tools/mcp-server/internal/adapter/mcp/server.go) - Protocol Version
-	// Actually we handle protocol version in server.go logic or constant?
-	// Implementation plan said "Update ... MCP Protocol Version".
-	// Let's assume it's in the HandleInitialize method.
-	if err := updateMcpProtocol("tools/mcp-server/internal/adapter/mcp/server.go", cfg.McpProtocolVersion); err != nil {
+	changed, err = updateMcpProtocol("tools/mcp-server/internal/adapter/mcp/server.go", cfg.McpProtocolVersion, dryRun)
+	if err != nil {
 		// Non-fatal if file structure changed, but good to know
 		fmt.Printf("Warning: Could not update MCP protocol version: %v\n", err)
 	}
+	if changed {
+		changesCount++
+	}
 
 	// 3. Walk and Update Frontmatter (codespec/codemodel)
-	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -87,7 +144,14 @@ func performSync(cfg *VersionConfig) error {
 			return fs.SkipDir
 		}
 		if !d.IsDir() && (strings.HasSuffix(path, "codespec.md") || strings.HasSuffix(path, "codemodel.md")) {
-			return updateFrontmatterVersion(path, cfg.SchemaVersion)
+			changed, err := updateFrontmatterVersion(path, cfg.SchemaVersion, dryRun)
+			if err != nil {
+				return err
+			}
+			if changed {
+				changesCount++
+			}
+			return nil
 		}
 		return nil
 	})
@@ -95,13 +159,17 @@ func performSync(cfg *VersionConfig) error {
 		return fmt.Errorf("failed to walk directories: %w", err)
 	}
 
+	if dryRun && changesCount > 0 {
+		return fmt.Errorf("version mismatch detected: %d files out of sync", changesCount)
+	}
+
 	return nil
 }
 
-func updateGoVersion(path string, version string) error {
+func updateGoVersion(path string, version string, dryRun bool) (bool, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Regex for: const Version = "..."
@@ -109,16 +177,20 @@ func updateGoVersion(path string, version string) error {
 	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`const Version = "%s"`, version)))
 
 	if !bytes.Equal(content, newContent) {
+		if dryRun {
+			fmt.Printf("[CHECK] %s would be updated to %s\n", path, version)
+			return true, nil
+		}
 		fmt.Printf("Updating %s -> %s\n", path, version)
-		return os.WriteFile(path, newContent, 0644)
+		return true, os.WriteFile(path, newContent, 0644)
 	}
-	return nil
+	return false, nil
 }
 
-func updateMcpProtocol(path string, version string) error {
+func updateMcpProtocol(path string, version string, dryRun bool) (bool, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Look for ProtocolVersion: "..." in struct initialization
@@ -126,16 +198,20 @@ func updateMcpProtocol(path string, version string) error {
 	newContent := re.ReplaceAll(content, []byte(fmt.Sprintf(`ProtocolVersion: "%s"`, version)))
 
 	if !bytes.Equal(content, newContent) {
+		if dryRun {
+			fmt.Printf("[CHECK] ProtocolVersion in %s would be updated to %s\n", path, version)
+			return true, nil
+		}
 		fmt.Printf("Updating ProtocolVersion in %s -> %s\n", path, version)
-		return os.WriteFile(path, newContent, 0644)
+		return true, os.WriteFile(path, newContent, 0644)
 	}
-	return nil
+	return false, nil
 }
 
-func updateFrontmatterVersion(path string, version string) error {
+func updateFrontmatterVersion(path string, version string, dryRun bool) (bool, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Simple YAML Frontmatter replacement using regex is safer than parsing/marshaling
@@ -149,13 +225,17 @@ func updateFrontmatterVersion(path string, version string) error {
 	if re.MatchString(strContent) {
 		newContent := re.ReplaceAllString(strContent, fmt.Sprintf("asdp_version: %s", version))
 		if newContent != strContent {
+			if dryRun {
+				fmt.Printf("[CHECK] %s would be updated to asdp_version: %s\n", path, version)
+				return true, nil
+			}
 			fmt.Printf("Updating %s -> %s\n", path, version)
-			return os.WriteFile(path, []byte(newContent), 0644)
+			return true, os.WriteFile(path, []byte(newContent), 0644)
 		}
 	} else {
 		// If missing, we might want to inject it?
 		// For now, only update if present to avoid breaking non-standard files.
 	}
 
-	return nil
+	return false, nil
 }

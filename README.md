@@ -1,57 +1,69 @@
-# ASDP: Agentic Spec Driven Programming
+# ASDP: Agentic Spec Driven Programming Protocol
 
-ASDP is a protocol designed to bridge the gap between AI Agents and Codebases. It enforces a documentation-first workflow where "The Spec is the Truth."
+> [!WARNING]
+> **EXPERIMENTAL PROTOCOL**: ASDP is currently an experimental research project. It is being utilized to evaluate the efficacy of AI agents in autonomous software development and maintenance. Expect breaking changes and architectural evolutions as we refine the protocol's foundations.
 
-> **Status**: Core Implementation Complete (v0.1.16)
+ASDP (Agentic Spec Driven Programming) is a formal protocol designed to eliminate the semantic gap between high-level architectural intent and low-level code implementation. By enforcing a documentation-centric state machine, ASDP ensures that **"The Specification is the Immutable Truth,"** providing AI agents with a deterministic context for reasoning and action.
 
-## Project Structure
+## Theoretical Foundations
 
-- **`core/`**: The "Standard Library" of ASDP (Protocol definitions, Rules, Skills).
-  - **`spec/`**: Formal definitions (`codespec`, `codemodel`, `codetree`).
-  - **`agent/`**: Rules and Workflows for AI agents.
-- **`tools/`**: The reference implementation ("The Kit").
-  - **`engine/`**: The shared Go library implementing the ASDP logic.
-  - **`mcp-server/`**: The MCP server that exposes ASDP capabilities.
-- **`installer/`**: Cross-platform installation scripts. These scripts now include an **interactive initialization** feature that optionally sets up the `.agent/` folder in your current directory.
+The ASDP protocol is built upon several key pillars of computer science and software engineering research:
 
-### Method 1: Automatic (Native Tools)
+1. **Agent-Oriented Software Engineering (AOSE)**: Drawing from the foundational work of Wooldridge and Jennings (*"Agent-Oriented Software Engineering"*, 2000), ASDP treats the development process as a set of autonomous interactions where the agent must maintain an accurate internal model of the environment (the codebase).
+2. **Intent-Based Programming**: Inspired by the paradigm where high-level goals drive system behavior, ASDP mandates that every module must be preceded by a `codespec.md`, which defines the "Contract of Intent" before any logic is implemented.
+3. **Context Management & Freshness**: Addressing the "Stale Context Problem" in Large Language Model (LLM) reasoning, ASDP introduces integrity checks (Freshness Status) to ensure that the agent's understanding of the code's structure (`codemodel.md`) is perfectly synchronized with the actual source.
 
-**Linux/macOS**:
+### Scientific Evaluation
+
+We are currently conducting empirical tests to measure how the enforcement of ASDP boundaries affects:
+
+- **Agent Autonomy**: The ability to perform complex refactors without human intervention.
+- **Error Propagation**: Reducing the rate at which "hallucinated" API calls or logic bugs are introduced.
+- **Context Efficiency**: Minimizing the required token count for an agent to understand a complex module.
+
+## The ASDP Architecture
+
+### Project Structure
+
+- **`core/`**: The protocol's definition layer. Contains standard rules, workflows, and schema definitions for `codespec`, `codemodel`, and `codetree`.
+- **`tools/`**: The Reference Implementation ("The Kit"). A high-performance Go engine and MCP server that provides the operational interface for agents.
+- **`installer/`**: Deployment vector for integrating ASDP into developer environments.
+
+### The Toolbelt (MCP Integration)
+
+The ASDP engine exposes a suite of specialized tools designed for agentic consumption:
+
+1. **`asdp_query_context`**:
+    - **Function**: Retrieves the unified context (Spec + Model + Freshness) for a directory.
+2. **`asdp_sync_codemodel`**:
+    - **Function**: Performs static analysis of the source code to update the `codemodel.md`.
+3. **`asdp_sync_codetree`**:
+    - **Function**: Recursively scans the project to update the global `codetree.md`.
+4. **`asdp_scaffold`**:
+    - **Function**: Generates compliant module structures from templates.
+
+## Installation
+
+ASDP can be installed via a single command. The installer will automatically configure the environment and optional agent-ready assets.
+
+### Linux / macOS
 
 ```bash
-# Set your token and run the installer
-GITHUB_TOKEN=your_token_here ./installer/install.sh
+curl -sSL https://raw.githubusercontent.com/Josepavese/asdp/main/installer/install.sh | bash
 ```
 
-**Windows (PowerShell)**:
+### Windows (PowerShell)
 
 ```powershell
-# Set your token and run the installer
-$env:GITHUB_TOKEN='your_token_here'; .\installer\install.ps1
+powershell -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/Josepavese/asdp/main/installer/install.ps1 | iex"
 ```
 
-### Method 2: Manual (GitHub CLI)
+## Contributing to the Experiment
 
-If you have the `gh` CLI installed and authenticated:
+This project is self-bootstrapping and adheres strictly to the ASDP protocol.
 
-```bash
-gh repo clone Josepavese/asdp
-cd asdp
-./installer/install.sh
-```
+- Refer to [codetree.md](file:///home/jose/hpdev/Libraries/asdp/codetree.md) for the global architecture.
+- Every tool in `tools/` is governed by its own `codespec.md`.
 
-## Features
-
-The `asdp` binary (MCP Server) provides the following tools:
-
-1. **`asdp_query_context`**: Reads `codespec.md` and `codemodel.md`, verifying their freshness.
-2. **`asdp_sync_codemodel`**: Automatically parses source code (Go + Polyglot Ctags) and updates `codemodel.md`.
-3. **`asdp_sync_codetree`**: Automatically scans the project structure and generates/updates `codetree.md`.
-4. **`asdp_scaffold`**: Creates new ASDP-compliant modules with standard templates.
-
-## Contributing
-
-This project itself follows ASDP.
-
-- `tools/codetree.md`: The root map of the tools.
-- `tools/mcp-server/codespec.md`: The spec for the server.
+---
+*Developed by Josè Pavese (Experimental Agentic Research)*

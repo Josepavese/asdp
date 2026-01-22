@@ -30,6 +30,10 @@ jobs:
     - name: Run Tests (MCP Server)
       run: cd tools/mcp-server && go test -v ./...
 
+    - name: Version Consistency Check
+      run: |
+        go run tools/cmd/version-manager/main.go check
+
     - name: Build Check (MCP Server)
       run: |
         cd tools/mcp-server
