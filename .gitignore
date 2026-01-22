@@ -1,8 +1,5 @@
 improvements/
-# ignore all code*.md files inside tools
-# temporary build and test dirs
 sandbox/
 dist/
-tools/**/codespec.md
-tools/**/codemodel.md
-
+asdp
+asdp-mcp-server
