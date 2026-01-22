@@ -16,31 +16,18 @@ func NewQueryContextUseCase(fs domain.FileSystem, hasher domain.ContentHasher) *
 	return &QueryContextUseCase{fs: fs, hasher: hasher}
 }
 
-type ContextResponse struct {
-	Path      string            `json:"path"`
-	Summary   string            `json:"summary"`
-	Freshness FreshnessStatus   `json:"freshness"`
-	Spec      *domain.CodeSpec  `json:"spec,omitempty"`
-	Model     *domain.CodeModel `json:"model,omitempty"`
-}
+// ContextResponse moved to domain
 
-type FreshnessStatus struct {
-	Status      string `json:"status"` // "fresh", "stale", "unknown"
-	Reason      string `json:"reason,omitempty"`
-	CurrentHash string `json:"current_hash,omitempty"`
-	DocHash     string `json:"doc_hash,omitempty"`
-}
-
-func (uc *QueryContextUseCase) Execute(path string) (*ContextResponse, error) {
+func (uc *QueryContextUseCase) Execute(path string) (*domain.ContextResponse, error) {
 	absPath, err := validateAndExpandPath(path)
 	if err != nil {
 		return nil, err
 	}
 	path = absPath
 
-	resp := &ContextResponse{
+	resp := &domain.ContextResponse{
 		Path:      path,
-		Freshness: FreshnessStatus{Status: "unknown"},
+		Freshness: domain.Freshness{Status: "unknown"},
 	}
 
 	// 1. Read CodeSpec
@@ -48,9 +35,15 @@ func (uc *QueryContextUseCase) Execute(path string) (*ContextResponse, error) {
 	if err == nil {
 		spec, err := parseCodeSpec(specBytes)
 		if err == nil {
-			resp.Spec = spec
+			resp.Spec = *spec
 			resp.Summary = spec.MetaData.Summary
 			resp.Spec.Body = ""
+
+			// --- Validate the Spec ---
+			validation := ValidateCodeSpec(spec)
+			if !validation.IsValid {
+				resp.Validation = validation
+			}
 		}
 	}
 
@@ -59,7 +52,7 @@ func (uc *QueryContextUseCase) Execute(path string) (*ContextResponse, error) {
 	if err == nil {
 		model, err := parseCodeModel(modelBytes)
 		if err == nil {
-			resp.Model = model
+			resp.Model = *model
 			resp.Model.Body = ""
 
 			// Optimize Payload: Strip docstrings to prevent JSON truncation
@@ -70,7 +63,7 @@ func (uc *QueryContextUseCase) Execute(path string) (*ContextResponse, error) {
 	}
 
 	// 3. Check Freshness
-	if resp.Model != nil {
+	if resp.Model.MetaData.ASDPVersion != "" {
 		realHash, err := uc.hasher.HashDir(path)
 		if err == nil {
 			docHash := resp.Model.MetaData.Integrity.SrcHash

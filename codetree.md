@@ -1,5 +1,5 @@
 ---
-asdp_version: 0.1.15
+asdp_version: 0.1.16
 root: true
 components:
     - name: core

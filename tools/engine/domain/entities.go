@@ -91,3 +91,27 @@ type Component struct {
 type Verification struct {
 	ScanTime time.Time `yaml:"scan_time"`
 }
+
+// --- Validation (Quality) ---
+
+type ValidationResult struct {
+	IsValid bool     `json:"is_valid"`
+	Errors  []string `json:"errors"`
+}
+
+type Freshness struct {
+	Status      string `json:"status"` // "fresh", "stale", "unknown"
+	Reason      string `json:"reason,omitempty"`
+	CurrentHash string `json:"current_hash,omitempty"`
+	DocHash     string `json:"doc_hash,omitempty"`
+}
+
+// ContextResponse is the DTO for QueryContext
+type ContextResponse struct {
+	Path       string            `json:"path"`
+	Summary    string            `json:"summary"`
+	Freshness  Freshness         `json:"freshness"`
+	Validation *ValidationResult `json:"validation,omitempty"`
+	Spec       CodeSpec          `json:"spec"`
+	Model      CodeModel         `json:"model"`
+}

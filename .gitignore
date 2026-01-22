@@ -1,5 +1,13 @@
+.agen
 improvements/
-sandbox/
+# ignore all code*.md files inside tools
+# temporary build and test dirs
+sandbox
 dist/
-asdp
-asdp-mcp-server
+tools/**/codespec.md
+tools/**/codemodel.md
+tools/**/codetree.md
+
+./codetree.md
+./codemodel.md
+./codespec.md

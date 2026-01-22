@@ -122,7 +122,13 @@ func (uc *ScaffoldUseCase) Execute(params ScaffoldParams) (string, error) {
 		created = append(created, filename)
 	}
 
-	return fmt.Sprintf("Scaffolded %s in %s. Created: %v, Skipped: %v", moduleName, targetDir, created, skipped), nil
+	msg := fmt.Sprintf("Scaffolded %s in %s. Created: %v, Skipped: %v", moduleName, targetDir, created, skipped)
+
+	if len(created) > 0 {
+		msg += "\n\n[ACTION REQUIRED] You MUST now edit 'codespec.md' to remove TODOs and populate the Summary/Title fields. Failure to do so will cause 'asdp_query_context' to report validation errors."
+	}
+
+	return msg, nil
 }
 
 func renderTemplate(tmplStr string, data interface{}) (string, error) {
