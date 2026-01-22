@@ -83,10 +83,10 @@ func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*dom
 			if spec.MetaData.Type != "" {
 				comp.Type = spec.MetaData.Type
 			}
-			if spec.MetaData.Title != "" {
-				comp.Description = spec.MetaData.Title
-			} else if spec.MetaData.Summary != "" {
+			if spec.MetaData.Summary != "" {
 				comp.Description = spec.MetaData.Summary
+			} else if spec.MetaData.Title != "" {
+				comp.Description = spec.MetaData.Title
 			}
 		}
 	} else {
