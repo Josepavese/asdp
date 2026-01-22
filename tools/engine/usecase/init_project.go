@@ -18,7 +18,17 @@ func NewInitProjectUseCase(fs *InitAgentUseCase, syncTree *SyncTreeUseCase, scaf
 	}
 }
 
-func (uc *InitProjectUseCase) Execute(projectPath, codePath string) (string, error) {
+func (uc *InitProjectUseCase) Execute(projectPath, codePath, title, summary, context string) (string, error) {
+	if len(title) < 3 {
+		return "", fmt.Errorf("title must be at least 3 characters long")
+	}
+	if len(summary) < 10 {
+		return "", fmt.Errorf("summary must be at least 10 characters long")
+	}
+	if len(context) < 20 {
+		return "", fmt.Errorf("context must be at least 20 characters long")
+	}
+
 	// 1. Initialize Agent at Project Root
 	agentRes, err := uc.fs.Execute(projectPath)
 	if err != nil {
@@ -39,9 +49,12 @@ func (uc *InitProjectUseCase) Execute(projectPath, codePath string) (string, err
 	// 3. Ensure Code Root is a Module (Scaffold)
 	// We scaffold with name="." in the codePath to ensure it has codespec/codemodel
 	scaffoldRes, err := uc.scaffold.Execute(ScaffoldParams{
-		Name: ".",
-		Path: codePath,
-		Type: "module",
+		Name:    ".",
+		Path:    codePath,
+		Type:    "module",
+		Title:   title,
+		Summary: summary,
+		Context: context,
 	})
 	if err != nil {
 		// Log but don't fail if scaffold fails (e.g. files already exist)

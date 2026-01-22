@@ -141,6 +141,9 @@ func TestFunctionalSuite(t *testing.T) {
 		args := map[string]interface{}{
 			"path":      projectDir,
 			"code_path": projectDir,
+			"title":     "Root Module Title for Testing",
+			"summary":   "Root summary must be long enough for testing",
+			"context":   "Root context must be very descriptive and long enough to pass the validation check.",
 		}
 		srv.CallTool(t, "asdp_init_project", args)
 

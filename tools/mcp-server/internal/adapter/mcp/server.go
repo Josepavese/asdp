@@ -350,7 +350,11 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 	case "asdp_init_project":
 		path, _ := callParams.Arguments["path"].(string)
 		codePath, _ := callParams.Arguments["code_path"].(string)
-		resultMsg, err := s.initProjectUC.Execute(path, codePath)
+		title, _ := callParams.Arguments["title"].(string)
+		summary, _ := callParams.Arguments["summary"].(string)
+		context, _ := callParams.Arguments["context"].(string)
+
+		resultMsg, err := s.initProjectUC.Execute(path, codePath, title, summary, context)
 		if err != nil {
 			return nil, &RpcError{Code: -32000, Message: err.Error()}
 		}
