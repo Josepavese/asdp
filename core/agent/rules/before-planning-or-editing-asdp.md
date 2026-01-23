@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Mandatory checks before planning or editing work.
+---
+
 # ASDP RULES — Before Planning or Editing (v1.0)
 
 These steps MUST ALWAYS be followed before planning or editing.

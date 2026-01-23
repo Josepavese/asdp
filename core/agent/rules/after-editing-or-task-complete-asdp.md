@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Steps mandated after completing a task or editing code.
+---
+
 # ASDP RULES — After Editing or Task Complete (v1.0)
 
 These steps MUST ALWAYS be followed at task end.

@@ -1,6 +1,6 @@
 ---
+trigger: always_on
 description: Rules for identifying, creating, and maintaining ASDP modules.
-groups: ["asdp", "maintenance"]
 ---
 
 # Managing ASDP Modules

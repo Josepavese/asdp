@@ -125,7 +125,7 @@ func TestFunctionalSuite(t *testing.T) {
 		srv.CallTool(t, "asdp_init_agent", args)
 
 		// Check for one known file from global assets
-		AssertFileExists(t, filepath.Join(sandboxDir, ".agent/rules/managing-asdp-modules.asdp.md"))
+		AssertFileExists(t, filepath.Join(sandboxDir, ".agent/rules/managing-asdp-modules-asdp.md"))
 	})
 
 	// SCENARIO 7: INIT PROJECT
@@ -147,7 +147,7 @@ func TestFunctionalSuite(t *testing.T) {
 		}
 		srv.CallTool(t, "asdp_init_project", args)
 
-		AssertFileExists(t, filepath.Join(projectDir, ".agent/rules/managing-asdp-modules.asdp.md"))
+		AssertFileExists(t, filepath.Join(projectDir, ".agent/rules/managing-asdp-modules-asdp.md"))
 		AssertFileExists(t, filepath.Join(projectDir, "codetree.md"))
 	})
 

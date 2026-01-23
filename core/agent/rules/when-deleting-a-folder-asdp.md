@@ -1,3 +1,8 @@
+---
+trigger: always_on
+description: Protocol to follow whenever deleting a folder or ASDP module.
+---
+
 ## RULE — WHEN_DELETING_A_FOLDER
 
 When a folder is deleted:
