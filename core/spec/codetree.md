@@ -59,6 +59,13 @@ components:
 # Verification
 verification:
   scan_time: "2023-10-27T10:00:00Z"
+
+# Exclusions
+# List of glob patterns or path prefixes to exclude from the ASDP tree and context.
+excludes:
+  - "dist"
+  - "tmp"
+  - "legacy/generated"
 ---
 ```
 

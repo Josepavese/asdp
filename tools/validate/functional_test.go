@@ -170,4 +170,80 @@ func TestFunctionalSuite(t *testing.T) {
 			t.Errorf("Expected symbol metadata, got: %s", jsonStr)
 		}
 	})
+	// SCENARIO 9: EXCLUSIONS & VALIDATION (Deep Test)
+	t.Run("Exclusions End-to-End", func(t *testing.T) {
+		exclusionDir := filepath.Join(sandboxDir, "exclusion_e2e")
+		os.MkdirAll(exclusionDir, 0755)
+
+		// 0. Init Project (Creates codetree.md and codespec.md)
+		srv.CallTool(t, "asdp_sync_codetree", map[string]interface{}{"path": exclusionDir})
+		os.WriteFile(filepath.Join(exclusionDir, "codespec.md"), []byte("---\ntitle: Root\nsummary: Root context\n---\n## Context\nTest ctx"), 0644)
+
+		// 1. Create a "Broken" Module (Significant but missing spec)
+		// This should trigger a validation error.
+		brokenDir := filepath.Join(exclusionDir, "broken_lib")
+		os.MkdirAll(brokenDir, 0755)
+		os.WriteFile(filepath.Join(brokenDir, "logic.go"), []byte("package broken"), 0644)
+
+		// 2. Validate -> SHOULD FAIL
+		resFail := srv.CallTool(t, "asdp_validate", map[string]interface{}{"path": exclusionDir})
+		contentFail := resFail["content"].([]interface{})[0].(map[string]interface{})["text"].(string)
+
+		if !strings.Contains(contentFail, "Missing required file: codespec.md") {
+			t.Errorf("Expected validation error for broken_lib, got: %s", contentFail)
+		}
+		if !strings.Contains(contentFail, "asdp_manage_exclusions") {
+			t.Errorf("Expected validation error to suggest exclusions, got: %s", contentFail)
+		}
+
+		// 3. Exclude 'broken_lib'
+		srv.CallTool(t, "asdp_manage_exclusions", map[string]interface{}{
+			"path":   exclusionDir,
+			"target": "broken_lib",
+			"action": "add",
+		})
+
+		// 4. Validate -> SHOULD PASS
+		// The validator should now skip 'broken_lib' because it's excluded in codetree.md
+		// Note: We need to ensure Validate logic actually READS exclusions.
+		// Currently ProjectValidator.Execute checks 'shouldIgnoreDir', but that checked names starting with '.'.
+		// It mentions exclusions in the error message, but DOES IT actually respect codetree exclusions during the walk?
+		// I need to check `project_validator.go` implementation again.
+		// If check pass, we are good. If not, I found a bug to fix!
+
+		resPass := srv.CallTool(t, "asdp_validate", map[string]interface{}{"path": exclusionDir})
+		contentPass := resPass["content"].([]interface{})[0].(map[string]interface{})["text"].(string)
+
+		if strings.Contains(contentPass, "Missing required file: codespec.md") {
+			t.Errorf("Validation still failed after exclusion! Output: %s", contentPass)
+		}
+		if !strings.Contains(contentPass, "\"is_valid\": true") {
+			t.Errorf("Expected is_valid: true, got: %s", contentPass)
+		}
+
+		// 5. Test Branch Exclusion
+		branchDir := filepath.Join(exclusionDir, "legacy/v1/nested")
+		os.MkdirAll(branchDir, 0755)
+		os.WriteFile(filepath.Join(branchDir, "old.go"), []byte("package old"), 0644)
+
+		// Verify it fails first
+		resBranchFail := srv.CallTool(t, "asdp_validate", map[string]interface{}{"path": exclusionDir})
+		if !strings.Contains(resBranchFail["content"].([]interface{})[0].(map[string]interface{})["text"].(string), "Missing required file") {
+			t.Error("Expected validation error for legacy branch")
+		}
+
+		// Exclude parent 'legacy'
+		srv.CallTool(t, "asdp_manage_exclusions", map[string]interface{}{
+			"path":   exclusionDir,
+			"target": "legacy",
+			"action": "add",
+		})
+
+		// Verify it passes
+		resBranchPass := srv.CallTool(t, "asdp_validate", map[string]interface{}{"path": exclusionDir})
+		jsonPass := resBranchPass["content"].([]interface{})[0].(map[string]interface{})["text"].(string)
+		if !strings.Contains(jsonPass, "\"is_valid\": true") {
+			t.Errorf("Validation failed after branch exclusion. Output: %s", jsonPass)
+		}
+	})
 }

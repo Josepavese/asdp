@@ -37,6 +37,7 @@ func main() {
 	scaffoldUC := usecase.NewScaffoldUseCase(fs, cfg.Scaffold)
 	initAgentUC := usecase.NewInitAgentUseCase(fs, *cfg)
 	syncTreeUC := usecase.NewSyncTreeUseCase(fs, cfg.Sync.Tree)
+	manageExclusionsUC := usecase.NewManageExclusionsUseCase(fs, syncTreeUC)
 	functionUC := usecase.NewGetFunctionInfoUseCase(fs, parser, hasher, *cfg)
 
 	// Mode 1: Query CLI (Testing)
@@ -56,6 +57,6 @@ func main() {
 
 	// Mode 2: MCP Server (Default)
 	fmt.Fprintf(os.Stderr, "ASDP MCP Server v%s started.\n", domain.Version)
-	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC, initProjectUC, validateUC, functionUC, *cfg)
+	mcpServer := mcp.NewServer(queryUC, syncUC, scaffoldUC, initAgentUC, syncTreeUC, manageExclusionsUC, initProjectUC, validateUC, functionUC, *cfg)
 	mcpServer.Serve()
 }

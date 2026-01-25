@@ -77,6 +77,7 @@ type CodeTreeMeta struct {
 	Root         bool         `yaml:"root"`
 	Components   []Component  `yaml:"components"`
 	Verification Verification `yaml:"verification"`
+	Excludes     []string     `yaml:"excludes,omitempty"`
 }
 
 type Component struct {

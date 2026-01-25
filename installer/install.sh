@@ -117,8 +117,11 @@ chmod +x "${INSTALL_DIR}/${APP_NAME}"
 echo "Fetching Core Assets from: $CORE_URL"
 # Use temp file for zip
 if curl "${AUTH_HEADER[@]}" -L -f -o "/tmp/asdp-core.zip" "$CORE_URL"; then
+    echo "Cleaning up old core assets..."
+    rm -rf "$HOME/.asdp/core"
+
     echo "Unzipping core assets..."
-    # Unzip into ~/.asdp, overwrite existing
+    # Unzip into ~/.asdp
     unzip -o /tmp/asdp-core.zip -d "$HOME/.asdp/"
     rm /tmp/asdp-core.zip
     echo -e "${GREEN}Core assets installed.${NC}"

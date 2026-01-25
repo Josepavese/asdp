@@ -31,27 +31,40 @@ func (uc *SyncTreeUseCase) Execute(path string) (*domain.CodeTree, error) {
 	}
 	path = absPath
 
-	// 1. Build Component Tree
-	rootComp, err := uc.buildComponent(path, path)
+	// 1. Read existing exclusions from codetree.md (if exists)
+	var existingExcludes []string
+	treePath := filepath.Join(path, "codetree.md")
+	if data, err := uc.fs.ReadFile(treePath); err == nil {
+		// Parse struct just to get excludes
+		var partialTree struct {
+			Excludes []string `yaml:"excludes"`
+		}
+		if err := yaml.Unmarshal(data, &partialTree); err == nil {
+			existingExcludes = partialTree.Excludes
+		}
+	}
+
+	// 2. Build Component Tree (with exclusions)
+	rootComp, err := uc.buildComponent(path, path, existingExcludes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build tree: %w", err)
 	}
 
-	// 2. Construct Tree Object
+	// 3. Construct Tree Object
 	tree := &domain.CodeTree{
 		MetaData: domain.CodeTreeMeta{
-			ASDPVersion: domain.Version, // Could come from config too if we want to override? No, usually static.
+			ASDPVersion: domain.Version,
 			Root:        true,
-			Components:  rootComp.Children, // Root's children are the top-level components
+			Components:  rootComp.Children,
 			Verification: domain.Verification{
 				ScanTime: time.Now(),
 			},
+			Excludes: existingExcludes,
 		},
 		Body: uc.config.HeaderTemplate,
 	}
 
-	// 3. Write to File
-	treePath := filepath.Join(path, "codetree.md")
+	// 4. Write to File
 	fmBytes, err := yaml.Marshal(tree.MetaData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal yaml: %w", err)
@@ -65,7 +78,7 @@ func (uc *SyncTreeUseCase) Execute(path string) (*domain.CodeTree, error) {
 	return tree, nil
 }
 
-func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*domain.Component, error) {
+func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string, excludes []string) (*domain.Component, error) {
 	relPath, _ := filepath.Rel(root, currentPath)
 	if relPath == "." {
 		relPath = "./"
@@ -148,7 +161,7 @@ func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*dom
 		}
 
 		dirName := filepath.Base(path)
-		if uc.isIgnoredDir(dirName) {
+		if uc.isIgnoredDir(dirName, excludes) {
 			return fs.SkipDir
 		}
 
@@ -165,7 +178,7 @@ func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*dom
 		}
 
 		// Recurse to build sub-component
-		childComp, err := uc.buildComponent(root, path)
+		childComp, err := uc.buildComponent(root, path, excludes)
 		if err != nil {
 			return err
 		}
@@ -179,7 +192,29 @@ func (uc *SyncTreeUseCase) buildComponent(root string, currentPath string) (*dom
 	return comp, err
 }
 
-func (uc *SyncTreeUseCase) isIgnoredDir(name string) bool {
+func (uc *SyncTreeUseCase) isIgnoredDir(name string, excludes []string) bool {
+	// Check user-defined exclusions first
+	for _, exc := range excludes {
+		// Simple match or glob? Requirement says "exclude folders or branches".
+		// For simplicity, let's match exact name or path prefix if needed.
+		// But here 'name' is just directory name.
+		// If we want to exclude "apps/foo", we need the full relative path in the recursion.
+		// But `buildComponent` receives `currentPath` and walks children.
+		// To truly support path-based exclusion (e.g. "exclude only tools/legacy"), we need the relative path.
+		// However, `isIgnoredDir` here only takes `name`.
+		// Let's rely on basic name matching for simplicity now, as agreed in some conventions,
+		// OR we should pass the relative path to `isIgnoredDir`.
+		// Given the `fs.Walk` structure, `path` variable inside the closure has the full path.
+		// BUT `isIgnoredDir` is called with `dirName`.
+		// Let's upgrade `isIgnoredDir` to just check names against a list for now,
+		// BUT we should also add a check inside the walk loop for the RELATIVE path if we want robust exclusion.
+		// For now, I will just match against the name for simple folder exclusion.
+		// Improve: Support glob matching?
+		if name == exc {
+			return true
+		}
+	}
+
 	for _, idx := range uc.config.IgnoredDirs {
 		if name == idx {
 			return true

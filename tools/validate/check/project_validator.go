@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Josepavese/asdp/engine/domain"
+	"gopkg.in/yaml.v3"
 )
 
 type ValidateProjectUseCase struct {
@@ -67,13 +68,29 @@ func (uc *ValidateProjectUseCase) Execute(rootPath string) (*ValidationReport, e
 		}
 	}
 
+	// 1.5 Load Exclusions from CodeTree (if present)
+	var exclusions []string
+	treePath := filepath.Join(rootPath, "codetree.md")
+	if data, err := uc.fs.ReadFile(treePath); err == nil {
+		var partialTree struct {
+			Excludes []string `yaml:"excludes"`
+		}
+		// Try parsing frontmatter
+		parts := strings.SplitN(string(data), "---", 3)
+		if len(parts) >= 2 {
+			if err := yaml.Unmarshal([]byte(parts[1]), &partialTree); err == nil {
+				exclusions = partialTree.Excludes
+			}
+		}
+	}
+
 	// 2. Walk Tree
 	err = uc.fs.Walk(rootPath, func(path string, isDir bool) error {
 		if !isDir {
 			return nil
 		}
-		if uc.shouldIgnoreDir(path) {
-			return nil // Skip .git, .agent, etc.
+		if uc.shouldIgnoreDir(path, rootPath, exclusions) {
+			return filepath.SkipDir // Skip directory content if ignored
 		}
 
 		// Analyze folder "significance"
@@ -91,9 +108,11 @@ func (uc *ValidateProjectUseCase) Execute(rootPath string) (*ValidationReport, e
 
 			fullPath := filepath.Join(path, filename)
 			if !uc.fileExists(fullPath) {
+				reason := fmt.Sprintf("Missing required file: %s (Significant Module).", filename)
+				reason += " If this folder contains temporary files, legacy code, or is fully self-explanatory, you MUST exclude it using the 'asdp_manage_exclusions' tool."
 				report.Errors = append(report.Errors, ValidationError{
 					Path:   path,
-					Reason: fmt.Sprintf("Missing required file: %s (Significant Module)", filename),
+					Reason: reason,
 				})
 			}
 		}
@@ -131,9 +150,26 @@ func (uc *ValidateProjectUseCase) fileExists(path string) bool {
 	return err == nil
 }
 
-func (uc *ValidateProjectUseCase) shouldIgnoreDir(path string) bool {
+func (uc *ValidateProjectUseCase) shouldIgnoreDir(path string, rootPath string, userExcludes []string) bool {
 	base := filepath.Base(path)
-	return strings.HasPrefix(base, ".") || base == "vendor" || base == "node_modules"
+	// Base ignores
+	if strings.HasPrefix(base, ".") || base == "vendor" || base == "node_modules" {
+		return true
+	}
+
+	// Check user exclusions (simple name match for now, to align with SyncTree)
+	// Ideally should match relative path glob
+	for _, exc := range userExcludes {
+		if base == exc {
+			return true
+		}
+		// check if relative path matches
+		rel, _ := filepath.Rel(rootPath, path)
+		if rel == exc || strings.HasPrefix(rel, exc+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
 }
 
 func (uc *ValidateProjectUseCase) validateSpecContent(path, content string, config domain.ValidationConfig) error {

@@ -67,6 +67,11 @@ try {
     Write-Host "Extracting core assets..."
     # Expand-Archive requires destination. We extract to parent of bin (.asdp)
     $BaseDir = "$env:USERPROFILE\.asdp"
+    $CoreDir = "$BaseDir\core"
+    if (Test-Path $CoreDir) {
+        Write-Host "Cleaning up old core assets..."
+        Remove-Item -Path $CoreDir -Recurse -Force
+    }
     Expand-Archive -Path $CoreFile -DestinationPath $BaseDir -Force
     Remove-Item $CoreFile
     Write-Host "Core assets installed." -ForegroundColor Green

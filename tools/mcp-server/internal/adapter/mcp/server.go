@@ -13,28 +13,30 @@ import (
 )
 
 type Server struct {
-	queryUC       *usecase.QueryContextUseCase
-	syncUC        *usecase.SyncModelUseCase
-	scaffoldUC    *usecase.ScaffoldUseCase
-	initAgentUC   *usecase.InitAgentUseCase
-	syncTreeUC    *usecase.SyncTreeUseCase
-	initProjectUC *usecase.InitProjectUseCase
-	validateUC    *check.ValidateProjectUseCase
-	functionUC    *usecase.GetFunctionInfoUseCase
-	config        domain.Config
+	queryUC            *usecase.QueryContextUseCase
+	syncUC             *usecase.SyncModelUseCase
+	scaffoldUC         *usecase.ScaffoldUseCase
+	initAgentUC        *usecase.InitAgentUseCase
+	syncTreeUC         *usecase.SyncTreeUseCase
+	manageExclusionsUC *usecase.ManageExclusionsUseCase
+	initProjectUC      *usecase.InitProjectUseCase
+	validateUC         *check.ValidateProjectUseCase
+	functionUC         *usecase.GetFunctionInfoUseCase
+	config             domain.Config
 }
 
-func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase, initProjectUC *usecase.InitProjectUseCase, validateUC *check.ValidateProjectUseCase, functionUC *usecase.GetFunctionInfoUseCase, config domain.Config) *Server {
+func NewServer(queryUC *usecase.QueryContextUseCase, syncUC *usecase.SyncModelUseCase, scaffoldUC *usecase.ScaffoldUseCase, initAgentUC *usecase.InitAgentUseCase, syncTreeUC *usecase.SyncTreeUseCase, manageExclusionsUC *usecase.ManageExclusionsUseCase, initProjectUC *usecase.InitProjectUseCase, validateUC *check.ValidateProjectUseCase, functionUC *usecase.GetFunctionInfoUseCase, config domain.Config) *Server {
 	return &Server{
-		queryUC:       queryUC,
-		syncUC:        syncUC,
-		scaffoldUC:    scaffoldUC,
-		initAgentUC:   initAgentUC,
-		syncTreeUC:    syncTreeUC,
-		initProjectUC: initProjectUC,
-		validateUC:    validateUC,
-		functionUC:    functionUC,
-		config:        config,
+		queryUC:            queryUC,
+		syncUC:             syncUC,
+		scaffoldUC:         scaffoldUC,
+		initAgentUC:        initAgentUC,
+		syncTreeUC:         syncTreeUC,
+		manageExclusionsUC: manageExclusionsUC,
+		initProjectUC:      initProjectUC,
+		validateUC:         validateUC,
+		functionUC:         functionUC,
+		config:             config,
 	}
 }
 
@@ -248,6 +250,29 @@ func (s *Server) handleListTools() (*ListToolsResult, *RpcError) {
 					"required": []string{"path"},
 				},
 			},
+			{
+				Name:        "asdp_manage_exclusions",
+				Description: "This is a tool from the asdp MCP server.\nExclude specific folders or branches from the ASDP protocol to hide them from context scanning. This modifies codetree.md.",
+				InputSchema: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"path": map[string]interface{}{
+							"type":        "string",
+							"description": "ABSOLUTE project root path.",
+						},
+						"target": map[string]interface{}{
+							"type":        "string",
+							"description": "Name of the folder or relative path to exclude (e.g. 'dist', 'legacy', 'temp/build').",
+						},
+						"action": map[string]interface{}{
+							"type":        "string",
+							"description": "Action to perform: 'add' or 'remove'.",
+							"default":     "add",
+						},
+					},
+					"required": []string{"path", "target", "action"},
+				},
+			},
 		},
 	}, nil
 }
@@ -382,6 +407,37 @@ func (s *Server) handleCallTool(params json.RawMessage) (*CallToolResult, *RpcEr
 		jsonBytes, _ := json.MarshalIndent(res, "", "  ")
 		return &CallToolResult{
 			Content: []ToolContent{{Type: "text", Text: string(jsonBytes)}},
+		}, nil
+
+	case "asdp_manage_exclusions":
+		path, _ := callParams.Arguments["path"].(string)
+		target, _ := callParams.Arguments["target"].(string)
+		action, _ := callParams.Arguments["action"].(string)
+
+		if path == "" || target == "" || action == "" {
+			return nil, &RpcError{Code: -32602, Message: "path, target, and action are required"}
+		}
+
+		err := s.manageExclusionsUC.Execute(path, target, action)
+		if err != nil {
+			return &CallToolResult{
+				Content: []ToolContent{
+					{
+						Type: "text",
+						Text: fmt.Sprintf("Error managing exclusions: %v", err),
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+
+		return &CallToolResult{
+			Content: []ToolContent{
+				{
+					Type: "text",
+					Text: fmt.Sprintf("Successfully executed '%s' exclusion for '%s' in %s", action, target, path),
+				},
+			},
 		}, nil
 
 	default:
